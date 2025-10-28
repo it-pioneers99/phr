@@ -1,0 +1,74 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:[naming_series]",
+ "creation": "2025-10-19 15:59:14.489275",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "column_break_1",
+  "occurrence_number",
+  "naming_series",
+  "column_break_2",
+  "penalty_value_level",
+  "column_break_3",
+  "is_percentage_level"
+ ],
+ "fields": [
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "occurrence_number",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "\u0631\u0642\u0645 \u0627\u0644\u062a\u0643\u0631\u0627\u0631",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "penalty_value_level",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "\u0642\u064a\u0645\u0629 \u0627\u0644\u062c\u0632\u0627\u0621",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_percentage_level",
+   "fieldtype": "Check",
+   "label": "\u0646\u0633\u0628\u0629 \u0645\u0626\u0648\u064a\u0629\u061f"
+  },
+  {
+   "default": "PTL-.YYYY.-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "series",
+   "options": "PTL-.YYYY.-"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-10-19 16:26:38.667715",
+ "modified_by": "Administrator",
+ "module": "PHR",
+ "name": "Penelty Type Level",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "occurrence_number",
+ "sort_order": "ASC",
+ "states": []
+}

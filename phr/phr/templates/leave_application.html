@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title }}</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .header { background: #f8f9fa; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+        .field { margin-bottom: 15px; }
+        .label { font-weight: bold; color: #333; }
+        .value { color: #666; }
+        .status { padding: 5px 10px; border-radius: 3px; font-weight: bold; }
+        .status.approved { background: #d4edda; color: #155724; }
+        .status.open { background: #fff3cd; color: #856404; }
+        .status.rejected { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{ title }}</h1>
+            <p>{{ description }}</p>
+        </div>
+        
+        <div class="field">
+            <span class="label">Employee:</span>
+            <span class="value">{{ doc.employee_name }}</span>
+        </div>
+        
+        <div class="field">
+            <span class="label">Leave Type:</span>
+            <span class="value">{{ doc.leave_type }}</span>
+        </div>
+        
+        <div class="field">
+            <span class="label">From Date:</span>
+            <span class="value">{{ doc.from_date }}</span>
+        </div>
+        
+        <div class="field">
+            <span class="label">To Date:</span>
+            <span class="value">{{ doc.to_date }}</span>
+        </div>
+        
+        <div class="field">
+            <span class="label">Total Days:</span>
+            <span class="value">{{ doc.total_leave_days }}</span>
+        </div>
+        
+        <div class="field">
+            <span class="label">Status:</span>
+            <span class="value status {{ doc.status.lower() }}">{{ doc.status }}</span>
+        </div>
+        
+        {% if doc.reason %}
+        <div class="field">
+            <span class="label">Reason:</span>
+            <span class="value">{{ doc.reason }}</span>
+        </div>
+        {% endif %}
+        
+        {% if doc.leave_approver_name %}
+        <div class="field">
+            <span class="label">Leave Approver:</span>
+            <span class="value">{{ doc.leave_approver_name }}</span>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

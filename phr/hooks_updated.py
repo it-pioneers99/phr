@@ -60,7 +60,7 @@ doctype_js = {
 # ------------
 
 # before_install = "phr.install.before_install"
-after_install = "phr.phr.setup_dynamic_leave_system.setup_dynamic_leave_system"
+# after_install = "phr.phr.phr.setup_dynamic_leave_system.setup_dynamic_leave_system"
 
 # Uninstallation
 # ------------
@@ -90,55 +90,32 @@ after_install = "phr.phr.setup_dynamic_leave_system.setup_dynamic_leave_system"
 # ---------------
 # Override standard doctype classes
 
-override_doctype_class = {
-	"Leave Application": "phr.phr.overrides.leave_application.LeaveApplication"
-}
-
-# DocType List
-# ------------
-# List of custom DocTypes in this app
-
-doctype_list = [
-	"EOS Settlement",
-	"Penalty Record", 
-	"Penalty Type",
-	"Overtime Request",
-	"Shift Permission Request",
-	"Loan Installment Postponement",
-	"Salary Progression",
-	"Biometric Sync Log"
-]
+# override_doctype_class = {
+# 	"ToDo": "custom_app.overrides.CustomToDo"
+# }
 
 # Document Events
 # ---------------
 # Hook on document methods and events
 
-doc_events = {
-    "Employee": {
-        "after_insert": "phr.phr.doc_events.employee_leave_events.after_insert",
-        "on_update": "phr.phr.doc_events.employee_leave_events.on_update",
-        "on_cancel": "phr.phr.doc_events.employee_leave_events.on_cancel"
-    },
-    "Employee Checkin": {
-        "after_insert": "phr.phr.doc_events.employee_checkin_events.after_insert"
-    },
-    "Leave Application": {
-        "validate": "phr.phr.doc_events.leave_application_events.validate",
-        "on_submit": "phr.phr.doc_events.leave_application_events.on_submit",
-        "on_cancel": "phr.phr.doc_events.leave_application_events.on_cancel"
-    },
-    "Salary Slip": {
-        "before_submit": "phr.phr.doc_events.salary_slip_leave_events.before_submit",
-    },
-    # Payroll integration: aggregate attendance penalties into Salary Slip deductions
-    "Salary Slip": {
-        "validate": "phr.phr.payroll.penalties.apply_attendance_penalties_to_salary_slip",
-    },
-    # Employee flags: update when penalty record is created (withholding promotion/allowance)
-    "Penalty Record": {
-        "after_insert": "phr.phr.payroll.penalties.update_employee_flags_on_penalty",
-    },
-}
+# Temporarily disabled PHR event handlers to test Employee save
+# doc_events = {
+#     "Employee": {
+#         "after_insert": "phr.phr.doc_events.employee_leave_events.after_insert",
+#         "on_update": "phr.phr.doc_events.employee_leave_events.on_update",
+#         "validate": "phr.phr.doc_events.employee_leave_events.validate",
+#         "on_cancel": "phr.phr.doc_events.employee_leave_events.on_cancel"
+#     },
+#     "Leave Application": {
+#         "validate": "phr.phr.doc_events.leave_application_events.validate",
+#         "on_submit": "phr.phr.doc_events.leave_application_events.on_submit",
+#         "on_cancel": "phr.phr.doc_events.leave_application_events.on_cancel",
+#         "before_save": "phr.phr.doc_events.leave_application_events.before_save"
+#     },
+#     "Salary Slip": {
+#         "before_submit": "phr.phr.doc_events.salary_slip_leave_events.before_submit"
+#     }
+# }
 
 # Scheduled Tasks
 # ---------------
@@ -146,9 +123,7 @@ doc_events = {
 scheduler_events = {
     "daily": [
         "phr.phr.scheduled_tasks.employee_summary_tasks.daily_employee_summary_calculation",
-        "phr.phr.scheduled_tasks.employee_summary_tasks.send_test_period_notifications",
-        "phr.phr.utils.leave_management.update_leave_balances_daily",
-        "phr.phr.utils.leave_management.check_contract_expiration_notifications"
+        "phr.phr.scheduled_tasks.employee_summary_tasks.send_test_period_notifications"
     ],
     "weekly": [
         "phr.phr.scheduled_tasks.employee_summary_tasks.generate_weekly_leave_report"
@@ -217,6 +192,4 @@ user_data_fields = [
 # --------------------------------
 
 # Make link fields search translated document names for these DocTypes
-# Recommended only for DocTypes which have limited documents with untranslated names
-# For example: Role, Gender, etc.
-# translated_search_doctypes = []
+# translate_link_doctypes = ["DocType", "Role", "Module Def", "Print Format", "Report", "Workspace"]

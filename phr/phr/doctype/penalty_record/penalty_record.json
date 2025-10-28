@@ -1,0 +1,246 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-01-27 08:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+  "field_order": [
+   "employee",
+   "column_break_1",
+   "violation_date",
+   "column_break_2",
+   "violation_type",
+   "section_break_attendance",
+   "checkin_reference",
+   "column_break_attendance",
+   "occurrence_number",
+   "column_break_attendance_2",
+   "lateness_minutes",
+   "early_minutes",
+   "section_break_penalty_period",
+   "penalty_period_start",
+   "column_break_penalty_period",
+   "penalty_period_end",
+   "section_break_desc",
+   "violation_description",
+   "section_break_1",
+   "penalty_levels",
+   "section_break_2",
+   "total_penalty_value",
+   "column_break_3",
+   "penalty_status",
+   "section_break_3",
+   "naming_series",
+   "column_break_4",
+   "amended_from"
+  ],
+ "fields": [
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "الموظف",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "violation_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "تاريخ المخالفة",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "violation_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "نوع المخالفة",
+   "options": "Penalty Type",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_attendance",
+   "fieldtype": "Section Break",
+   "label": "Attendance Details",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "checkin_reference",
+   "fieldtype": "Link",
+   "label": "Employee Checkin Reference",
+   "options": "Employee Checkin",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_attendance",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "occurrence_number",
+   "fieldtype": "Int",
+   "label": "Occurrence Number",
+   "description": "1st, 2nd, 3rd, 4th occurrence",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_attendance_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "lateness_minutes",
+   "fieldtype": "Int",
+   "label": "Lateness (Minutes)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "early_minutes",
+   "fieldtype": "Int",
+   "label": "Early Departure (Minutes)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_penalty_period",
+   "fieldtype": "Section Break",
+   "label": "Penalty Period"
+  },
+  {
+   "fieldname": "penalty_period_start",
+   "fieldtype": "Date",
+   "label": "Period Start Date",
+   "read_only": 1,
+   "description": "Penalty period starts from day 21"
+  },
+  {
+   "fieldname": "column_break_penalty_period",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "penalty_period_end",
+   "fieldtype": "Date",
+   "label": "Period End Date",
+   "read_only": 1,
+   "description": "Penalty period ends on day 20 of next month"
+  },
+  {
+   "fieldname": "section_break_desc",
+   "fieldtype": "Section Break",
+   "label": "Violation Description"
+  },
+  {
+   "fieldname": "violation_description",
+   "fieldtype": "Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break",
+   "label": "مستويات الجزاء"
+  },
+  {
+   "fieldname": "penalty_levels",
+   "fieldtype": "Table",
+   "label": "مستويات الجزاء",
+   "options": "Penalty Level"
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break",
+   "label": "تفاصيل الجزاء"
+  },
+  {
+   "fieldname": "penalty_amount",
+   "fieldtype": "Currency",
+   "label": "Penalty Amount (This Occurrence)",
+   "description": "Calculated penalty for this specific occurrence",
+   "read_only": 1,
+   "bold": 1
+  },
+  {
+   "fieldname": "column_break_penalty",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_penalty_value",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "إجمالي قيمة الجزاء",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "penalty_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "حالة الجزاء",
+   "options": "Draft\nSubmitted\nApproved\nRejected"
+  },
+  {
+   "fieldname": "section_break_3",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "in_list_view": 1,
+   "label": "Series",
+   "options": "PR-.YYYY.-"
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Penalty Record",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-01-27 08:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "PHR",
+ "name": "Penalty Record",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

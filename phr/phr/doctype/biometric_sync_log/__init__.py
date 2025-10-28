@@ -1,0 +1,2 @@
+# Biometric Sync Log DocType
+

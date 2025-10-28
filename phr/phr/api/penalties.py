@@ -1,0 +1,181 @@
+import frappe
+from frappe import _
+from frappe.utils import getdate, add_days
+from datetime import datetime, time, timedelta, date
+
+
+def _normalize_time(value, base_date):
+    """Return datetime.time from Frappe Time which may be datetime.timedelta, datetime.time or str."""
+    if isinstance(value, time):
+        return value
+    if isinstance(value, timedelta):
+        return (datetime.combine(base_date, time.min) + value).time()
+    if isinstance(value, str):
+        # 'HH:MM:SS' or 'HH:MM:SS.ffffff'
+        return datetime.strptime(value[:8], "%H:%M:%S").time()
+    return time.min
+
+
+def _month_bounds(d: date) -> tuple[date, date]:
+    start = date(d.year, d.month, 1)
+    if d.month == 12:
+        end = date(d.year + 1, 1, 1) - timedelta(days=1)
+    else:
+        end = date(d.year, d.month + 1, 1) - timedelta(days=1)
+    return start, end
+
+
+def _classify(shift, checkin_dt: datetime, log_type: str):
+    start_t = _normalize_time(shift.start_time, checkin_dt.date())
+    end_t = _normalize_time(shift.end_time, checkin_dt.date())
+    checkin_t = checkin_dt.time()
+    if log_type == "IN":
+        checkin_dt_norm = datetime.combine(checkin_dt.date(), checkin_t)
+        start_dt_norm = datetime.combine(checkin_dt.date(), start_t)
+        if checkin_dt_norm <= start_dt_norm:
+            return None, "On time or early"
+        late_min = (checkin_dt_norm - start_dt_norm).total_seconds() / 60
+        if 15 <= late_min < 30:
+            return "Late Arrival 15-30 Minutes", f"Late by {int(late_min)}m"
+        if 30 <= late_min < 45:
+            return "Late Arrival 30-45 Minutes", f"Late by {int(late_min)}m"
+        if 45 <= late_min < 75:
+            return "Late Arrival 45-75 Minutes", f"Late by {int(late_min)}m"
+        if late_min >= 75:
+            return "Late Arrival above 75 Minutes", f"Late by {int(late_min)}m"
+        return None, "Grace (<15m)"
+    else:
+        checkin_dt_norm = datetime.combine(checkin_dt.date(), checkin_t)
+        end_dt_norm = datetime.combine(checkin_dt.date(), end_t)
+        if checkin_dt_norm >= end_dt_norm:
+            return None, "On time or late"
+        early_min = (end_dt_norm - checkin_dt_norm).total_seconds() / 60
+        if early_min > 15:
+            return "Early Left above 15 Minutes", f"Early by {int(early_min)}m"
+        return None, "Grace (<=15m)"
+
+
+def _compute_progressive_level(employee: str, penalty_type: str, penalty_date: date) -> int:
+    """Progression based on current calendar month count of same penalty type."""
+    start, end = _month_bounds(penalty_date)
+    existing_count = frappe.db.count(
+        "Penalty Record",
+        filters={
+            "employee": employee,
+            "violation_type": penalty_type,
+            "violation_date": ("between", [start, end]),
+        },
+    )
+    return int(existing_count) + 1
+
+
+def _get_percentage_for_level(penalty_type: str, level: int) -> float:
+    row = frappe.db.get_value(
+        "Penelty Type Level",
+        {"parent": penalty_type, "occurrence_number": level},
+        ["penalty_value_level"],
+        as_dict=True,
+    )
+    if row:
+        return float(row.penalty_value_level or 0)
+    # fallback to highest defined level
+    last = frappe.db.get_value(
+        "Penelty Type Level",
+        {"parent": penalty_type},
+        ["penalty_value_level"],
+        order_by="occurrence_number desc",
+        as_dict=True,
+    )
+    return float((last or {}).get("penalty_value_level") or 0)
+
+
+@frappe.whitelist()
+def process_attendance_penalty_simple(employee: str, checkin_time: str, log_type: str, shift_type: str):
+    """Classify, seed if needed, and create Penalty Record with progressive levels.
+
+    Returns dict with creation details. If no penalty, returns reason.
+    """
+    try:
+        shift = frappe.get_doc("Shift Type", shift_type)
+    except Exception:
+        return {"penalty_created": False, "reason": "Shift type not found"}
+
+    try:
+        checkin_dt = datetime.fromisoformat(checkin_time.replace('Z', '+00:00'))
+    except Exception:
+        return {"penalty_created": False, "reason": "Invalid checkin_time"}
+
+    # Use existing Penalty Types/Levels only (no auto-seeding)
+
+    penalty_type, penalty_reason = _classify(shift, checkin_dt, log_type)
+    if not penalty_type:
+        return {"penalty_created": False, "penalty_type": None, "penalty_reason": penalty_reason}
+
+    # progressive level per policy
+    occurrence_level = _compute_progressive_level(employee, penalty_type, checkin_dt.date())
+    penalty_percentage = _get_percentage_for_level(penalty_type, occurrence_level)
+
+    # Map to site's Penalty Record schema
+    violation_date = checkin_dt.date()
+    violation_type = penalty_type
+    violation_description = penalty_reason
+    lateness_minutes = 0
+    early_minutes = 0
+    if log_type == "IN":
+        # compute minutes late
+        start_t = _normalize_time(shift.start_time, checkin_dt.date())
+        late_min = int((datetime.combine(checkin_dt.date(), checkin_dt.time()) - datetime.combine(checkin_dt.date(), start_t)).total_seconds() // 60)
+        lateness_minutes = max(late_min, 0)
+    else:
+        end_t = _normalize_time(shift.end_time, checkin_dt.date())
+        early_min = int((datetime.combine(checkin_dt.date(), end_t) - datetime.combine(checkin_dt.date(), checkin_dt.time())).total_seconds() // 60)
+        early_minutes = max(early_min, 0)
+
+    # The schema has total_penalty_value and penalty_amount (decimals). Use percentage as value for now.
+    total_penalty_value = float(penalty_percentage)
+    penalty_amount = float(penalty_percentage)
+
+    created_name = None
+    try:
+        rec = frappe.new_doc("Penalty Record")
+        rec.employee = employee
+        rec.violation_date = violation_date
+        rec.violation_type = violation_type
+        rec.violation_description = violation_description
+        rec.occurrence_number = occurrence_level
+        rec.lateness_minutes = lateness_minutes
+        rec.early_minutes = early_minutes
+        rec.total_penalty_value = total_penalty_value
+        rec.penalty_amount = penalty_amount
+        rec.insert(ignore_permissions=True)
+        if getattr(rec, "is_submittable", 0) or getattr(rec.meta, "is_submittable", 0):
+            try:
+                rec.submit()
+            except Exception:
+                pass
+        created_name = rec.name
+    except Exception as e:
+        # If doctype missing or fields differ, still return classification
+        frappe.log_error(frappe.get_traceback(), _(f"Penalty creation failed: {e}"))
+
+    return {
+        "penalty_created": True if created_name else False,
+        "penalty_docname": created_name,
+        "penalty_type": penalty_type,
+        "penalty_reason": penalty_reason,
+        "penalty_level": occurrence_level,
+        "penalty_percentage": penalty_percentage,
+        "lateness_minutes": lateness_minutes,
+        "early_minutes": early_minutes,
+    }
+
+
+@frappe.whitelist()
+def seed_attendance_penalty_types(shift_type: str | None = None):
+    """Public endpoint to seed the 5 attendance penalty types with levels in phr app."""
+    # Import the function from the utils module
+    from phr.phr.utils.attendance_penalty_detector import setup_attendance_penalty_types
+    setup_attendance_penalty_types()
+    return {"ok": True}
+
+

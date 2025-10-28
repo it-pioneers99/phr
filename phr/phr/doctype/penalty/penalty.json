@@ -1,0 +1,120 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-09-15 10:35:40.221935",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "penalty_type",
+  "column_break_lugr",
+  "penalty",
+  "section_break_yejq",
+  "employee",
+  "column_break_wojn",
+  "penalty_reason",
+  "section_break_g3ka",
+  "naming_series",
+  "column_break_njls",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "allow_on_submit": 1,
+   "fieldname": "penalty_type",
+   "fieldtype": "Link",
+   "label": "\u0646\u0648\u0639 \u0627\u0644\u062c\u0632\u0627\u0621",
+   "options": "Penalty Type",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_lugr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "\u0627\u0644\u0645\u0648\u0638\u0641",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "penalty_reason",
+   "fieldtype": "Data",
+   "label": "\u0633\u0628\u0628 \u0627\u0644\u062c\u0632\u0627\u0621",
+   "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "penalty",
+   "fieldtype": "Data",
+   "label": "\u0627\u0644\u062c\u0632\u0627\u0621",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_g3ka",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "in_list_view": 1,
+   "label": "Series",
+   "options": "PEN-EMP-.YYYY.-"
+  },
+  {
+   "fieldname": "column_break_njls",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Penalty",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "section_break_yejq",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_wojn",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-09-15 11:02:18.710856",
+ "modified_by": "Administrator",
+ "module": "PHR",
+ "name": "Penalty",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
