@@ -3,8 +3,8 @@
 
 frappe.ui.form.on('Employee', {
     refresh: function(frm) {
-
-        if (!frm.is_new() ) {
+        // Always show Setup PHR Custom Fields button
+        if (!frm.is_new()) {
             frm.add_custom_button(__('Setup PHR Custom Fields'), function() {
                 frappe.confirm(__('This will create/update custom fields on Employee and Leave Type. Continue?'), () => {
                     frappe.call({
@@ -15,10 +15,14 @@ frappe.ui.form.on('Employee', {
                             if (r && r.message && r.message.status === 'success') {
                                 frappe.msgprint({
                                     title: __('Success'),
-                                    message: __('PHR custom fields setup completed successfully.'),
+                                    message: __('PHR custom fields setup completed successfully. Refreshing form...'),
                                     indicator: 'green'
                                 });
                                 frappe.show_alert({ message: __('PHR custom fields created/updated'), indicator: 'green' }, 5);
+                                // Refresh form to show newly created fields and buttons
+                                setTimeout(function() {
+                                    frm.reload_doc();
+                                }, 1000);
                             } else {
                                 frappe.msgprint({
                                     title: __('Error'),
@@ -39,33 +43,79 @@ frappe.ui.form.on('Employee', {
             }, __('Actions'));
         }
         
-        // Add EOS Calculator button
-        if (!frm.is_new()) {
-            frm.add_custom_button(__('Calculate End of Service'), function() {
-                show_eos_calculator_dialog(frm);
-            }, __('Actions'));
-        }
+        // Check if PHR custom fields exist before showing calculation buttons
+        const phrFieldsExist = check_phr_fields_exist(frm);
         
-        // Add Annual Leave Balance Calculator button
-        if (!frm.is_new()) {
+        // Only show calculation buttons if custom fields have been set up
+        if (!frm.is_new() && phrFieldsExist) {
+            // Leave Calculation Buttons
+            frm.add_custom_button(__('Calculate Leave Balances'), function() {
+                calculate_all_leave_balances(frm);
+            }, __('PHR Calculations'));
+            
             frm.add_custom_button(__('Calculate Annual Leave Balance'), function() {
                 calculate_annual_leave_balance(frm);
-            }, __('Actions'));
+            }, __('PHR Calculations'));
+            
+            frm.add_custom_button(__('Calculate Sick Leave Deduction'), function() {
+                calculate_sick_leave_deduction_dialog(frm);
+            }, __('PHR Calculations'));
+            
+            // Testing Period Buttons
+            frm.add_custom_button(__('Calculate Testing Period'), function() {
+                calculate_testing_period(frm);
+            }, __('PHR Calculations'));
+            
+            // Leave Allocation Buttons
+            frm.add_custom_button(__('Create Leave Allocations'), function() {
+                create_automatic_leave_allocation(frm);
+            }, __('PHR Calculations'));
+            
+            frm.add_custom_button(__('Sync Leave Allocation'), function() {
+                sync_leave_allocation(frm);
+            }, __('PHR Calculations'));
+            
+            // End of Service Buttons
+            frm.add_custom_button(__('Calculate End of Service'), function() {
+                show_eos_calculator_dialog(frm);
+            }, __('PHR Calculations'));
+            
+            // If EOS calculation fields are present, add refresh button
+            if (frm.fields_dict.eos_net_payable_amount) {
+                frm.add_custom_button(__('Refresh EOS Calculation'), function() {
+                    calculate_and_update_eos(frm);
+                }, __('PHR Calculations'));
+            }
         }
         
-        // If EOS calculation fields are present, add calculate button
-        if (frm.fields_dict.eos_net_payable_amount) {
-            frm.add_custom_button(__('Refresh EOS Calculation'), function() {
-                calculate_and_update_eos(frm);
-            }, __('Actions'));
-        }
-        
-        // Show annual leave balance in dashboard
-        if (!frm.is_new()) {
+        // Show annual leave balance in dashboard if fields exist
+        if (!frm.is_new() && phrFieldsExist) {
             show_annual_leave_dashboard(frm);
         }
     }
 });
+
+// Helper function to check if PHR custom fields exist
+function check_phr_fields_exist(frm) {
+    // Check for key custom fields that indicate setup was done
+    const requiredFields = [
+        'contract_end_date',
+        'annual_leave_balance',
+        'sick_leave_balance',
+        'testing_period_end_date'
+    ];
+    
+    // Check if at least 2 key fields exist
+    let fieldsFound = 0;
+    requiredFields.forEach(function(fieldname) {
+        if (frm.fields_dict[fieldname]) {
+            fieldsFound++;
+        }
+    });
+    
+    // Return true if most fields exist (at least 2 out of 4)
+    return fieldsFound >= 2;
+}
 
 function show_eos_calculator_dialog(frm) {
     let d = new frappe.ui.Dialog({
