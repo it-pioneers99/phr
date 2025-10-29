@@ -42,6 +42,16 @@ def setup_employee_fields():
     """
     Setup custom fields for Employee doctype
     """
+    def _field_exists(dt: str, fieldname: str) -> bool:
+        try:
+            # Check in Custom Field
+            if frappe.db.exists("Custom Field", {"dt": dt, "fieldname": fieldname}):
+                return True
+            # Check in DocType (standard fields)
+            meta = frappe.get_meta(dt)
+            return bool(meta.get_field(fieldname))
+        except Exception:
+            return False
     custom_fields = {
         "Employee": [
             {
@@ -130,7 +140,12 @@ def setup_employee_fields():
     }
     
     try:
-        create_custom_fields(custom_fields, update=True)
+        # Filter out fields that already exist to avoid ValidationError
+        to_create = {"Employee": [f for f in custom_fields["Employee"] if not _field_exists("Employee", f["fieldname"]) ]}
+        if to_create["Employee"]:
+            create_custom_fields(to_create, update=True)
+        else:
+            frappe.msgprint(_("All Employee custom fields already exist. Skipping creation."))
         frappe.msgprint(_("Employee custom fields created successfully!"))
     except Exception as e:
         frappe.log_error(f"Error creating Employee custom fields: {str(e)}", "Employee Custom Fields")
@@ -141,6 +156,14 @@ def setup_leave_type_fields():
     """
     Setup custom fields for Leave Type doctype
     """
+    def _field_exists(dt: str, fieldname: str) -> bool:
+        try:
+            if frappe.db.exists("Custom Field", {"dt": dt, "fieldname": fieldname}):
+                return True
+            meta = frappe.get_meta(dt)
+            return bool(meta.get_field(fieldname))
+        except Exception:
+            return False
     custom_fields = {
         "Leave Type": [
             {
@@ -195,7 +218,11 @@ def setup_leave_type_fields():
     }
     
     try:
-        create_custom_fields(custom_fields, update=True)
+        to_create = {"Leave Type": [f for f in custom_fields["Leave Type"] if not _field_exists("Leave Type", f["fieldname"]) ]}
+        if to_create["Leave Type"]:
+            create_custom_fields(to_create, update=True)
+        else:
+            frappe.msgprint(_("All Leave Type custom fields already exist. Skipping creation."))
         frappe.msgprint(_("Leave Type custom fields created successfully!"))
     except Exception as e:
         frappe.log_error(f"Error creating Leave Type custom fields: {str(e)}", "Leave Type Custom Fields")
@@ -206,6 +233,14 @@ def setup_sick_leave_fields():
     """
     Setup hidden custom fields for Sick Leave tracking
     """
+    def _field_exists(dt: str, fieldname: str) -> bool:
+        try:
+            if frappe.db.exists("Custom Field", {"dt": dt, "fieldname": fieldname}):
+                return True
+            meta = frappe.get_meta(dt)
+            return bool(meta.get_field(fieldname))
+        except Exception:
+            return False
     custom_fields = {
         "Employee": [
             {
@@ -252,7 +287,11 @@ def setup_sick_leave_fields():
     }
     
     try:
-        create_custom_fields(custom_fields, update=True)
+        to_create = {"Employee": [f for f in custom_fields["Employee"] if not _field_exists("Employee", f["fieldname"]) ]}
+        if to_create["Employee"]:
+            create_custom_fields(to_create, update=True)
+        else:
+            frappe.msgprint(_("All additional PHR custom fields already exist. Skipping creation."))
         frappe.msgprint(_("Additional PHR custom fields created successfully!"))
     except Exception as e:
         frappe.log_error(f"Error creating additional PHR custom fields: {str(e)}", "PHR Additional Fields")
