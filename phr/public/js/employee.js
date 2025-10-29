@@ -3,6 +3,41 @@
 
 frappe.ui.form.on('Employee', {
     refresh: function(frm) {
+
+        if (!frm.is_new() ) {
+            frm.add_custom_button(__('Setup PHR Custom Fields'), function() {
+                frappe.confirm(__('This will create/update custom fields on Employee and Leave Type. Continue?'), () => {
+                    frappe.call({
+                        method: 'phr.phr.server_scripts.add_phr_custom_fields.add_phr_custom_fields',
+                        freeze: true,
+                        freeze_message: __('Setting up PHR custom fields...'),
+                        callback: function(r) {
+                            if (r && r.message && r.message.status === 'success') {
+                                frappe.msgprint({
+                                    title: __('Success'),
+                                    message: __('PHR custom fields setup completed successfully.'),
+                                    indicator: 'green'
+                                });
+                                frappe.show_alert({ message: __('PHR custom fields created/updated'), indicator: 'green' }, 5);
+                            } else {
+                                frappe.msgprint({
+                                    title: __('Error'),
+                                    message: (r && r.message && r.message.message) || __('Unknown error'),
+                                    indicator: 'red'
+                                });
+                            }
+                        },
+                        error: function(err) {
+                            frappe.msgprint({
+                                title: __('Error'),
+                                message: __('Failed to setup PHR custom fields.'),
+                                indicator: 'red'
+                            });
+                        }
+                    });
+                });
+            }, __('Actions'));
+        }
         
         // Add EOS Calculator button
         if (!frm.is_new()) {

@@ -29,6 +29,21 @@ frappe.ui.form.on('Employee', {
             frm.add_custom_button(__('Quick Calculations'), function() {
                 show_quick_calculations_dialog(frm);
             });
+
+            frm.add_custom_button(__('Setup PHR Custom Fields'), function() {
+                frappe.call({
+                    method: 'phr.phr.server_scripts.add_phr_custom_fields.add_phr_custom_fields',
+                    freeze: true,
+                    freeze_message: __('Setting up PHR custom fields...'),
+                    callback: function(r) {
+                        if (r && r.message && r.message.status === 'success') {
+                            frappe.msgprint(__('PHR custom fields setup completed successfully.'));
+                            frappe.show_alert({ message: __('PHR custom fields created/updated'), indicator: 'green' }, 5);
+                        }
+                    }
+                });
+            }, __('Actions'));
+
         }
         
         // Show current values in dashboard

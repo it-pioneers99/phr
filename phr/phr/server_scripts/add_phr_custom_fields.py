@@ -3,15 +3,20 @@ Server Script to Add PHR Custom Fields
 This script can be executed via bench console or as a server script
 """
 
+
+
 import frappe
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 
+@frappe.whitelist()
 def add_phr_custom_fields():
+
     """
     Main function to add all PHR custom fields for Employee and Leave Type doctypes
     """
+
     try:
         frappe.msgprint(_("Starting PHR custom fields setup..."))
         
@@ -252,9 +257,3 @@ def setup_sick_leave_fields():
     except Exception as e:
         frappe.log_error(f"Error creating additional PHR custom fields: {str(e)}", "PHR Additional Fields")
         raise
-
-
-if __name__ == "__main__":
-    # This allows the script to be run directly
-    add_phr_custom_fields()
-
