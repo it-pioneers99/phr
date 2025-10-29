@@ -166,10 +166,18 @@ EMPLOYEE_CUSTOM_FIELDS = [
         "precision": 1
     },
     {
+        "fieldname": "is_additional_annual_leave",
+        "fieldtype": "Check",
+        "label": "Is Additional Annual Leave",
+        "insert_after": "annual_leave_balance",
+        "default": 0,
+        "description": "Check if employee is eligible for additional annual leave (2.5 days/month instead of 1.75 days/month)"
+    },
+    {
         "fieldname": "annual_leave_used",
         "fieldtype": "Float",
         "label": "Annual Leave Used",
-        "insert_after": "annual_leave_balance",
+        "insert_after": "is_additional_annual_leave",
         "default": 0.0,
         "read_only": 1,
         "precision": 1
