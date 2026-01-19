@@ -8,7 +8,7 @@ from frappe.utils import getdate, flt
 from datetime import datetime
 
 @frappe.whitelist()
-def calculate_eos_for_employee(employee, end_date=None, termination_reason="Resignation"):
+def calculate_eos_for_employee(employee, end_date=None, termination_reason="Resignation", basic_salary=None):
     """
     Calculate EOS Settlement for an employee without creating a document.
     This is for preview/calculation purposes only.
@@ -17,6 +17,7 @@ def calculate_eos_for_employee(employee, end_date=None, termination_reason="Resi
         employee: Employee ID
         end_date: End of service date (defaults to today)
         termination_reason: Resignation, Contract Expiry, or Termination by Employer
+        basic_salary: Optional manual basic salary override (float)
     
     Returns:
         dict: Calculated settlement details
@@ -38,8 +39,12 @@ def calculate_eos_for_employee(employee, end_date=None, termination_reason="Resi
     
     appointment_date = getdate(emp_doc.date_of_joining)
     
-    # Get last basic salary
-    last_basic_salary = get_employee_basic_salary(employee)
+    # Get last basic salary (use manual override if provided)
+    if basic_salary is not None:
+        last_basic_salary = flt(basic_salary)
+        salary_source = "manual"
+    else:
+        last_basic_salary, salary_source = get_employee_basic_salary(employee)
     
     # Calculate years of service
     delta = end_date - appointment_date
@@ -74,6 +79,7 @@ def calculate_eos_for_employee(employee, end_date=None, termination_reason="Resi
         'end_of_service_date': end_date,
         'termination_reason': termination_reason,
         'last_basic_salary': last_basic_salary,
+        'salary_source': salary_source,
         'years_of_service': years_of_service,
         'eligible_for_gratuity': gratuity_amount > 0,
         'gratuity_amount': gratuity_amount,
@@ -88,7 +94,12 @@ def calculate_eos_for_employee(employee, end_date=None, termination_reason="Resi
 
 
 def get_employee_basic_salary(employee):
-    """Get the employee's current basic salary"""
+    """
+    Get the employee's current basic salary
+    
+    Returns:
+        tuple: (salary_amount, source) where source is 'salary_structure', 'salary_slip', or 'not_found'
+    """
     # Try to get from latest salary structure assignment
     salary_structure_assignment = frappe.db.get_value(
         "Salary Structure Assignment",
@@ -101,7 +112,7 @@ def get_employee_basic_salary(employee):
     )
     
     if salary_structure_assignment:
-        return flt(salary_structure_assignment)
+        return flt(salary_structure_assignment), 'salary_structure'
     
     # Try to get from latest salary slip
     salary_slip = frappe.db.get_value(
@@ -115,14 +126,10 @@ def get_employee_basic_salary(employee):
     )
     
     if salary_slip:
-        return flt(salary_slip)
+        return flt(salary_slip), 'salary_slip'
     
-    # If nothing found, return 0
-    frappe.msgprint(
-        _("No salary information found for employee {0}. Please set basic salary manually.").format(employee),
-        indicator='orange'
-    )
-    return 0
+    # If nothing found, return 0 with source indicator
+    return 0, 'not_found'
 
 
 def calculate_gratuity(years_of_service, last_basic_salary, termination_reason):

@@ -163,6 +163,18 @@ function show_eos_calculator_dialog(frm) {
                 reqd: 1
             },
             {
+                fieldname: 'section_break_salary',
+                fieldtype: 'Section Break',
+                label: __('Basic Salary')
+            },
+            {
+                fieldname: 'manual_basic_salary',
+                label: __('Manual Basic Salary (if not found automatically)'),
+                fieldtype: 'Currency',
+                description: __('Enter basic salary manually if salary information is not found automatically'),
+                default: 0
+            },
+            {
                 fieldname: 'section_break_1',
                 fieldtype: 'Section Break',
                 label: __('Calculated Results')
@@ -177,18 +189,38 @@ function show_eos_calculator_dialog(frm) {
         primary_action: function() {
             let values = d.get_values();
             
+            // Prepare args with optional manual salary
+            let args = {
+                employee: frm.doc.name,
+                end_date: values.end_date,
+                termination_reason: values.termination_reason
+            };
+            
+            // Only include basic_salary if it's provided and greater than 0
+            if (values.manual_basic_salary && flt(values.manual_basic_salary) > 0) {
+                args.basic_salary = flt(values.manual_basic_salary);
+            }
+            
             frappe.call({
                 method: 'phr.phr.api.employee_eos_calculator.calculate_eos_for_employee',
-                args: {
-                    employee: frm.doc.name,
-                    end_date: values.end_date,
-                    termination_reason: values.termination_reason
-                },
+                args: args,
                 freeze: true,
                 freeze_message: __('Calculating...'),
                 callback: function(r) {
                     if (r.message) {
                         display_eos_results(d, r.message);
+                        
+                        // If salary not found and no manual salary provided, show warning and focus on field
+                        if (r.message.salary_source === 'not_found' && (!args.basic_salary || args.basic_salary === 0)) {
+                            frappe.show_alert({
+                                message: __('No salary information found. Please enter basic salary manually above.'),
+                                indicator: 'orange'
+                            }, 5);
+                            // Focus on the manual salary field
+                            setTimeout(function() {
+                                d.fields_dict.manual_basic_salary.$input.focus();
+                            }, 500);
+                        }
                     }
                 }
             });
@@ -197,13 +229,21 @@ function show_eos_calculator_dialog(frm) {
         secondary_action: function() {
             let values = d.get_values();
             
+            // Prepare args with optional manual salary
+            let args = {
+                employee: frm.doc.name,
+                end_date: values.end_date,
+                termination_reason: values.termination_reason
+            };
+            
+            // Only include basic_salary if it's provided and greater than 0
+            if (values.manual_basic_salary && flt(values.manual_basic_salary) > 0) {
+                args.basic_salary = flt(values.manual_basic_salary);
+            }
+            
             frappe.call({
                 method: 'phr.phr.api.employee_eos_calculator.calculate_eos_for_employee',
-                args: {
-                    employee: frm.doc.name,
-                    end_date: values.end_date,
-                    termination_reason: values.termination_reason
-                },
+                args: args,
                 freeze: true,
                 callback: function(r) {
                     if (r.message) {
@@ -274,6 +314,14 @@ function display_eos_results(dialog, data) {
                     <span class="eos-label">Last Basic Salary:</span>
                     <span class="eos-value">${format_currency(data.last_basic_salary, currency)}</span>
                 </div>
+                ${data.salary_source === 'not_found' || data.salary_source === 'manual' ? `
+                <div class="eos-warning" style="margin-top: 10px;">
+                    ${data.salary_source === 'not_found' ? 
+                        '⚠️ <strong>No salary information found automatically.</strong> Please enter basic salary manually above and recalculate.' :
+                        'ℹ️ <strong>Using manually entered basic salary.</strong>'
+                    }
+                </div>
+                ` : ''}
             </div>
             
             <div class="eos-section">
@@ -383,18 +431,35 @@ function calculate_and_update_eos(frm) {
         return;
     }
     
+    // Check if manual basic salary is set in the form
+    let args = {
+        employee: frm.doc.name,
+        end_date: frm.doc.eos_end_date,
+        termination_reason: frm.doc.eos_termination_reason
+    };
+    
+    // If eos_manual_basic_salary field exists and has a value, use it
+    if (frm.doc.eos_manual_basic_salary && flt(frm.doc.eos_manual_basic_salary) > 0) {
+        args.basic_salary = flt(frm.doc.eos_manual_basic_salary);
+    }
+    
     frappe.call({
         method: 'phr.phr.api.employee_eos_calculator.calculate_eos_for_employee',
-        args: {
-            employee: frm.doc.name,
-            end_date: frm.doc.eos_end_date,
-            termination_reason: frm.doc.eos_termination_reason
-        },
+        args: args,
         freeze: true,
         freeze_message: __('Calculating...'),
         callback: function(r) {
             if (r.message) {
                 let data = r.message;
+                
+                // Show warning if salary not found
+                if (data.salary_source === 'not_found' && (!args.basic_salary || args.basic_salary === 0)) {
+                    frappe.msgprint({
+                        title: __('Salary Information Not Found'),
+                        message: __('No salary information found for employee {0}. Please set basic salary manually in the form or use the calculator dialog.').format(frm.doc.name),
+                        indicator: 'orange'
+                    });
+                }
                 
                 // Update fields
                 frm.set_value('eos_years_of_service', data.years_of_service);
