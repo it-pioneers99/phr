@@ -2126,3 +2126,542 @@ function flt(value) {
     return parseFloat(value) || 0;
 }
 
+// ============================================================================
+// ATTENDANCE SYNC FUNCTIONALITY
+// ============================================================================
+// Attendance Sync Custom Button
+// Adds "Send Sync Attends" button to Employee Checkin and Attendance list views
+
+// Employee Checkin List View
+frappe.listview_settings["Employee Checkin"] = {
+	onload: function (listview) {
+		// Keep existing "Fetch Shifts" functionality if it exists
+		// Add "Send Sync Attends" button
+		listview.page.add_action_item(__("Send Sync Attends"), () => {
+			const selected = listview.get_checked_items();
+			
+			if (selected.length === 0) {
+				frappe.msgprint({
+					title: __("No Selection"),
+					message: __("Please select at least one Employee Checkin record to sync."),
+					indicator: "orange"
+				});
+				return;
+			}
+			
+			const checkin_names = selected.map(item => item.name);
+			
+			// Debug: Log selected names
+			console.log("Selected checkin names:", checkin_names);
+			console.log("Selected count:", checkin_names.length);
+			
+			// Show confirmation dialog
+			frappe.confirm(
+				__("Are you sure you want to sync {0} Employee Checkin record(s) to the remote server?", [selected.length]),
+				() => {
+					// Proceed with sync
+					frappe.call({
+						method: "phr.phr.api.attendance_sync.sync_selected_records",
+						args: {
+							doctype: "Employee Checkin",
+							names: checkin_names
+						},
+						freeze: true,
+						freeze_message: __("Syncing Employee Checkin records..."),
+						callback: function(r) {
+							console.log("Sync response:", r);
+							if (r.message) {
+								const result = r.message;
+								
+								// Always show the message, even if 0 synced
+								if (result.success !== false) {
+									// Show alert with detailed message
+									const alert_msg = result.message || 
+										__("Sync completed: {0} synced, {1} failed out of {2} total", [
+											result.synced || 0,
+											result.failed || 0,
+											result.total || 0
+										]);
+									
+									frappe.show_alert({
+										message: alert_msg,
+										indicator: result.failed > 0 || (result.synced === 0 && result.failed === 0) ? "orange" : "green"
+									}, 8);
+									
+									// Show details if there are failures or if nothing synced
+									if ((result.failed > 0 || result.synced === 0) && result.details) {
+										const failed_details = result.details
+											.filter(d => d.status === "failed" || d.status === "error")
+											.map(d => `- ${d.checkin || d.attendance || d.name}: ${d.error || "Unknown error"}`)
+											.join("\n");
+										
+										if (failed_details) {
+											frappe.msgprint({
+												title: __("Sync Details"),
+												message: __("Sync Results:\n\n{0}", [failed_details]),
+												indicator: result.synced === 0 ? "red" : "orange"
+											});
+										}
+									} else if (result.synced === 0 && result.failed === 0) {
+										// Show message if no records were processed
+										frappe.msgprint({
+											title: __("No Records Processed"),
+											message: result.message || __("No records were found to sync. Please check the selected records."),
+											indicator: "orange"
+										});
+									}
+									
+									// Refresh list
+									listview.refresh();
+								} else {
+									frappe.msgprint({
+										title: __("Sync Failed"),
+										message: result.message || __("An error occurred during sync"),
+										indicator: "red"
+									});
+								}
+							} else {
+								frappe.msgprint({
+									title: __("Error"),
+									message: __("No response from server"),
+									indicator: "red"
+								});
+							}
+						},
+						error: function(r) {
+							console.error("Sync error:", r);
+							frappe.msgprint({
+								title: __("Error"),
+								message: __("An error occurred: {0}", [r.message || r.exc || "Unknown error"]),
+								indicator: "red"
+							});
+						}
+					});
+				}
+			);
+		});
+	}
+};
+
+// Attendance List View
+frappe.listview_settings["Attendance"] = {
+	onload: function (listview) {
+		// Add "Send Sync Attends" button
+		listview.page.add_action_item(__("Send Sync Attends"), () => {
+			const selected = listview.get_checked_items();
+			
+			if (selected.length === 0) {
+				frappe.msgprint({
+					title: __("No Selection"),
+					message: __("Please select at least one Attendance record to sync."),
+					indicator: "orange"
+				});
+				return;
+			}
+			
+			const attendance_names = selected.map(item => item.name);
+			
+			// Debug: Log selected names
+			console.log("Selected attendance names:", attendance_names);
+			console.log("Selected count:", attendance_names.length);
+			
+			// Show confirmation dialog
+			frappe.confirm(
+				__("Are you sure you want to sync {0} Attendance record(s) to the remote server?", [selected.length]),
+				() => {
+					// Proceed with sync
+					frappe.call({
+						method: "phr.phr.api.attendance_sync.sync_selected_records",
+						args: {
+							doctype: "Attendance",
+							names: attendance_names
+						},
+						freeze: true,
+						freeze_message: __("Syncing Attendance records..."),
+						callback: function(r) {
+							console.log("Sync response:", r);
+							if (r.message) {
+								const result = r.message;
+								
+								// Always show the message, even if 0 synced
+								if (result.success !== false) {
+									// Show alert with detailed message
+									const alert_msg = result.message || 
+										__("Sync completed: {0} synced, {1} failed out of {2} total", [
+											result.synced || 0,
+											result.failed || 0,
+											result.total || 0
+										]);
+									
+									frappe.show_alert({
+										message: alert_msg,
+										indicator: result.failed > 0 || (result.synced === 0 && result.failed === 0) ? "orange" : "green"
+									}, 8);
+									
+									// Show details if there are failures or if nothing synced
+									if ((result.failed > 0 || result.synced === 0) && result.details) {
+										const failed_details = result.details
+											.filter(d => d.status === "failed" || d.status === "error")
+											.map(d => `- ${d.attendance || d.checkin || d.name}: ${d.error || "Unknown error"}`)
+											.join("\n");
+										
+										if (failed_details) {
+											frappe.msgprint({
+												title: __("Sync Details"),
+												message: __("Sync Results:\n\n{0}", [failed_details]),
+												indicator: result.synced === 0 ? "red" : "orange"
+											});
+										}
+									} else if (result.synced === 0 && result.failed === 0) {
+										// Show message if no records were processed
+										frappe.msgprint({
+											title: __("No Records Processed"),
+											message: result.message || __("No records were found to sync. Please check the selected records."),
+											indicator: "orange"
+										});
+									}
+									
+									// Refresh list
+									listview.refresh();
+								} else {
+									frappe.msgprint({
+										title: __("Sync Failed"),
+										message: result.message || __("An error occurred during sync"),
+										indicator: "red"
+									});
+								}
+							} else {
+								frappe.msgprint({
+									title: __("Error"),
+									message: __("No response from server"),
+									indicator: "red"
+								});
+							}
+						},
+						error: function(r) {
+							console.error("Sync error:", r);
+							frappe.msgprint({
+								title: __("Error"),
+								message: __("An error occurred: {0}", [r.message || r.exc || "Unknown error"]),
+								indicator: "red"
+							});
+						}
+					});
+				}
+			);
+		});
+	}
+};
+
+
+// ============================================================================
+// EMPLOYEE ENHANCED FUNCTIONALITY
+// ============================================================================
+// Additional PHR management functions from employee_enhanced.js
+
+// Enhanced Leave Analysis Dialog
+function show_enhanced_leave_analysis_dialog(frm) {
+    const dialog = new frappe.ui.Dialog({
+        title: __('Enhanced Leave Analysis'),
+        fields: [
+            {
+                label: __('Leave Type'),
+                fieldtype: 'Link',
+                options: 'Leave Type',
+                fieldname: 'leave_type'
+            },
+            {
+                label: __('Start Date'),
+                fieldtype: 'Date',
+                fieldname: 'start_date'
+            },
+            {
+                label: __('End Date'),
+                fieldtype: 'Date',
+                fieldname: 'end_date'
+            },
+            {
+                label: __('Analysis Type'),
+                fieldtype: 'Select',
+                options: ['By Type', 'By Period', 'Complete Analysis'],
+                default: 'Complete Analysis',
+                fieldname: 'analysis_type'
+            }
+        ],
+        primary_action_label: __('Analyze'),
+        primary_action: function() {
+            const values = dialog.get_values();
+            if (values.analysis_type === 'By Period' && (!values.start_date || !values.end_date)) {
+                frappe.msgprint(__('Please select both start and end dates for period analysis'));
+                return;
+            }
+            
+            perform_enhanced_analysis(frm, values);
+            dialog.hide();
+        },
+        secondary_action_label: __('Cancel'),
+        secondary_action: function() {
+            dialog.hide();
+        }
+    });
+    
+    dialog.show();
+}
+
+function perform_enhanced_analysis(frm, values) {
+    let method = 'phr.phr.api.leave_management.get_enhanced_leave_analysis_api';
+    let args = { employee_id: frm.doc.name };
+    
+    if (values.analysis_type === 'By Type' && values.leave_type) {
+        method = 'phr.phr.api.leave_management.get_leave_analysis_by_type';
+        args.leave_type = values.leave_type;
+    } else if (values.analysis_type === 'By Period' && values.start_date && values.end_date) {
+        method = 'phr.phr.api.leave_management.get_leave_analysis_by_period';
+        args.start_date = values.start_date;
+        args.end_date = values.end_date;
+        if (values.leave_type) {
+            args.leave_type = values.leave_type;
+        }
+    }
+    
+    frappe.call({
+        method: method,
+        args: args,
+        callback: function(r) {
+            if (r.message) {
+                show_analysis_results(r.message, values.analysis_type);
+            }
+        }
+    });
+}
+
+function show_analysis_results(data, analysis_type) {
+    let title = __('Leave Analysis Results');
+    if (analysis_type === 'By Type') {
+        title = __('Leave Analysis by Type');
+    } else if (analysis_type === 'By Period') {
+        title = __('Leave Analysis by Period');
+    }
+    
+    const dialog = new frappe.ui.Dialog({
+        title: title,
+        fields: [
+            {
+                label: __('Analysis Data'),
+                fieldtype: 'HTML',
+                fieldname: 'analysis_html'
+            }
+        ],
+        primary_action_label: __('Close'),
+        primary_action: function() {
+            dialog.hide();
+        }
+    });
+    
+    // Generate HTML content based on analysis type
+    let html = generate_analysis_html(data, analysis_type);
+    dialog.fields_dict.analysis_html.$wrapper.html(html);
+    
+    dialog.show();
+}
+
+function generate_analysis_html(data, analysis_type) {
+    let html = '<div style="max-height: 400px; overflow-y: auto;">';
+    
+    if (data.employee_info) {
+        html += '<h4>Employee Information</h4>';
+        html += '<table class="table table-bordered">';
+        html += '<tr><td><strong>Name:</strong></td><td>' + data.employee_info.employee_name + '</td></tr>';
+        html += '<tr><td><strong>Working Years:</strong></td><td>' + data.employee_info.working_years + '</td></tr>';
+        html += '<tr><td><strong>Working Months:</strong></td><td>' + data.employee_info.working_months + '</td></tr>';
+        html += '<tr><td><strong>Eligible for 30 Days:</strong></td><td>' + (data.employee_info.is_eligible_30_days ? 'Yes' : 'No') + '</td></tr>';
+        html += '</table>';
+    }
+    
+    if (data.leave_balances) {
+        html += '<h4>Leave Balances by Type</h4>';
+        html += '<table class="table table-bordered">';
+        html += '<thead><tr><th>Leave Type</th><th>Allocated</th><th>Used</th><th>Remaining</th></tr></thead>';
+        html += '<tbody>';
+        
+        for (let [leaveType, balance] of Object.entries(data.leave_balances)) {
+            html += '<tr>';
+            html += '<td>' + leaveType + '</td>';
+            html += '<td>' + balance.allocated + '</td>';
+            html += '<td>' + balance.used + '</td>';
+            html += '<td>' + balance.remaining + '</td>';
+            html += '</tr>';
+        }
+        
+        html += '</tbody></table>';
+    }
+    
+    if (data.period_analysis && data.period_analysis.leave_type_breakdown) {
+        html += '<h4>Period Analysis</h4>';
+        html += '<table class="table table-bordered">';
+        html += '<thead><tr><th>Leave Type</th><th>Allocated</th><th>Used</th><th>Remaining</th><th>Applications</th></tr></thead>';
+        html += '<tbody>';
+        
+        for (let [leaveType, breakdown] of Object.entries(data.period_analysis.leave_type_breakdown)) {
+            html += '<tr>';
+            html += '<td>' + leaveType + '</td>';
+            html += '<td>' + breakdown.allocated + '</td>';
+            html += '<td>' + breakdown.used + '</td>';
+            html += '<td>' + breakdown.remaining + '</td>';
+            html += '<td>' + breakdown.applications_count + '</td>';
+            html += '</tr>';
+        }
+        
+        html += '</tbody></table>';
+    }
+    
+    html += '</div>';
+    return html;
+}
+
+// Contract Management Functions (Enhanced)
+function calculate_contract_dates(frm) {
+    if (!frm.doc.date_of_joining) {
+        frappe.msgprint(__('Please set joining date first'));
+        return;
+    }
+    
+    const joiningDate = new Date(frm.doc.date_of_joining);
+    
+    // Calculate testing period end date (180 days from joining)
+    const testingEndDate = new Date(joiningDate);
+    testingEndDate.setDate(testingEndDate.getDate() + 180);
+    
+    // Calculate contract end date (180 days from joining)
+    const contractEndDate = new Date(joiningDate);
+    contractEndDate.setDate(contractEndDate.getDate() + 180);
+    
+    // Calculate remaining days
+    const today = new Date();
+    const remainingDays = Math.ceil((contractEndDate - today) / (1000 * 60 * 60 * 24));
+    
+    // Update form fields
+    if (frm.fields_dict.contract_start_date) {
+        frm.set_value('contract_start_date', joiningDate.toISOString().split('T')[0]);
+    }
+    if (frm.fields_dict.testing_period_end_date) {
+        frm.set_value('testing_period_end_date', testingEndDate.toISOString().split('T')[0]);
+    }
+    if (frm.fields_dict.contract_end_date) {
+        frm.set_value('contract_end_date', contractEndDate.toISOString().split('T')[0]);
+    }
+    if (frm.fields_dict.contract_duration_days) {
+        frm.set_value('contract_duration_days', 180);
+    }
+    if (frm.fields_dict.remaining_contract_days) {
+        frm.set_value('remaining_contract_days', Math.max(0, remainingDays));
+    }
+    if (frm.fields_dict.contract_status) {
+        frm.set_value('contract_status', remainingDays > 0 ? 'Active' : 'Expired');
+    }
+    
+    show_contract_calculation_dialog(joiningDate, testingEndDate, contractEndDate, remainingDays);
+}
+
+function show_contract_calculation_dialog(joiningDate, testingEndDate, contractEndDate, remainingDays) {
+    const dialog = new frappe.ui.Dialog({
+        title: __('Contract Calculation Results'),
+        fields: [
+            {
+                label: __('Contract Information'),
+                fieldtype: 'Section Break'
+            },
+            {
+                label: __('Joining Date'),
+                fieldtype: 'Date',
+                default: joiningDate.toISOString().split('T')[0],
+                read_only: 1
+            },
+            {
+                label: __('Contract Start Date'),
+                fieldtype: 'Date',
+                default: joiningDate.toISOString().split('T')[0],
+                read_only: 1
+            },
+            {
+                label: __('Testing Period End Date'),
+                fieldtype: 'Date',
+                default: testingEndDate.toISOString().split('T')[0],
+                read_only: 1
+            },
+            {
+                label: __('Contract End Date'),
+                fieldtype: 'Date',
+                default: contractEndDate.toISOString().split('T')[0],
+                read_only: 1
+            },
+            {
+                label: __('Contract Duration'),
+                fieldtype: 'Data',
+                default: '180 days',
+                read_only: 1
+            },
+            {
+                label: __('Remaining Days'),
+                fieldtype: 'Data',
+                default: remainingDays + ' days',
+                read_only: 1
+            },
+            {
+                label: __('Contract Status'),
+                fieldtype: 'Data',
+                default: remainingDays > 0 ? 'Active' : 'Expired',
+                read_only: 1
+            },
+            {
+                label: __('Notifications'),
+                fieldtype: 'Section Break'
+            },
+            {
+                label: __('90-Day Alert'),
+                fieldtype: 'Data',
+                default: remainingDays <= 90 && remainingDays > 30 ? 'Will be sent' : 'Not applicable',
+                read_only: 1
+            },
+            {
+                label: __('30-Day Alert'),
+                fieldtype: 'Data',
+                default: remainingDays <= 30 && remainingDays > 0 ? 'Will be sent' : 'Not applicable',
+                read_only: 1
+            }
+        ],
+        primary_action_label: __('Close'),
+        primary_action: function() {
+            dialog.hide();
+        }
+    });
+    
+    dialog.show();
+    
+    // Show appropriate message
+    if (remainingDays > 0) {
+        frappe.msgprint(__('Contract dates calculated successfully. ' + remainingDays + ' days remaining.'));
+    } else {
+        frappe.msgprint(__('Contract has expired. Please renew or extend the contract.'));
+    }
+}
+
+function reset_contract_notifications(frm) {
+    if (!frm.doc.name) {
+        frappe.msgprint(__('Please save the employee record first'));
+        return;
+    }
+    
+    frappe.call({
+        method: 'phr.phr.utils.contract_management.reset_notification_flags',
+        args: {
+            employee_name: frm.doc.name
+        },
+        callback: function(r) {
+            if (r.message) {
+                frappe.msgprint(__('Notification flags reset successfully'));
+                frm.reload_doc();
+            }
+        }
+    });
+}
