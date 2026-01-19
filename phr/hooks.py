@@ -32,11 +32,14 @@ app_license = "MIT"
 
 # include js in doctype views
 doctype_js = {
-    "Employee": "phr/public/js/employee.js",
-    "Employee Checkin": "phr/public/js/employee_checkin_biometric_control.js"
+    "Employee": "public/js/employee.js",
+    "Employee Checkin": "public/js/employee_checkin_biometric_control.js"
 }
 
-# doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
+doctype_list_js = {
+	"Employee Checkin": "public/js/attendance_sync.js",
+	"Attendance": "public/js/attendance_sync.js"
+}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
@@ -149,13 +152,14 @@ scheduler_events = {
         "phr.phr.scheduled_tasks.employee_summary_tasks.daily_employee_summary_calculation",
         "phr.phr.scheduled_tasks.employee_summary_tasks.send_test_period_notifications",
         "phr.phr.utils.leave_management.update_leave_balances_daily",
-        "phr.phr.utils.leave_management.check_contract_expiration_notifications"
+        "phr.phr.utils.contract_management.check_contract_end_notifications"
     ],
     "weekly": [
         "phr.phr.scheduled_tasks.employee_summary_tasks.generate_weekly_leave_report"
     ],
     "monthly": [
-        "phr.phr.scheduled_tasks.employee_summary_tasks.cleanup_old_notifications"
+        "phr.phr.scheduled_tasks.employee_summary_tasks.cleanup_old_notifications",
+        "phr.phr.utils.leave_allocation_utils.allocate_online_present_monthly"
     ]
 }
 

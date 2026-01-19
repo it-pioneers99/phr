@@ -1,5 +1,5 @@
 import frappe
-from frappe.utils import getdate, add_days, date_diff, nowdate
+from frappe.utils import getdate, add_days, date_diff, nowdate, today
 from frappe import _
 from phr.phr.utils.leave_management import (
     calculate_years_of_service,
@@ -15,6 +15,9 @@ def after_insert(doc, method=None):
     """Handle employee creation"""
     try:
         frappe.msgprint(f"Employee {doc.employee_name} created. Initializing leave management...")
+        
+        # Update testing period remaining days
+        update_testing_period_remaining_days(doc)
         
         # Update leave balances and contract details
         update_employee_leave_balances(doc.name)
@@ -32,6 +35,10 @@ def after_insert(doc, method=None):
 def on_update(doc, method=None):
     """Handle employee updates"""
     try:
+        # Update testing period remaining days if joining date changed
+        if doc.has_value_changed("date_of_joining"):
+            update_testing_period_remaining_days(doc)
+        
         # Check if joining date or contract end date changed
         if doc.has_value_changed("date_of_joining") or doc.has_value_changed("contract_end_date"):
             frappe.msgprint(f"Employee {doc.employee_name} updated. Recalculating leave management...")
@@ -301,3 +308,32 @@ def create_annual_leave_allocation(employee, leave_type, days, year):
         
     except Exception as e:
         frappe.log_error(f"Error creating annual leave allocation for {employee}: {str(e)}", "PHR Employee Events")
+
+def update_testing_period_remaining_days(doc):
+    """
+    Calculate and update remaining testing period days
+    Testing period is 180 days (6 months) from date of joining
+    Returns 0 if testing period has passed
+    """
+    try:
+        if not doc.date_of_joining:
+            frappe.db.set_value("Employee", doc.name, "remaining_testing_days", 0)
+            frappe.db.set_value("Employee", doc.name, "testing_period_end_date", None)
+            return
+        
+        joining_date = getdate(doc.date_of_joining)
+        testing_end_date = add_days(joining_date, 180)  # 180 days = 6 months
+        today_date = today()
+        
+        # Calculate remaining days
+        if today_date <= testing_end_date:
+            remaining_days = date_diff(testing_end_date, today_date)
+        else:
+            remaining_days = 0
+        
+        # Update fields
+        frappe.db.set_value("Employee", doc.name, "testing_period_end_date", testing_end_date)
+        frappe.db.set_value("Employee", doc.name, "remaining_testing_days", remaining_days)
+        
+    except Exception as e:
+        frappe.log_error(f"Error updating testing period remaining days for {doc.name}: {str(e)}", "PHR Employee Events")

@@ -2,15 +2,34 @@ import frappe
 from frappe.utils import getdate, date_diff
 from frappe import _
 from phr.phr.utils.leave_management import calculate_sick_leave_deduction
+from phr.phr.utils.salary_component_integration import (
+    get_overtime_allowance_for_salary_slip,
+    get_shift_permission_deduction_for_salary_slip
+)
 
 @frappe.whitelist()
 def before_submit(doc, method=None):
-    """Handle salary slip before submit for sick leave deduction"""
+    """Handle salary slip before submit for various deductions and earnings"""
     try:
         employee = doc.employee
         start_date = getdate(doc.start_date)
         end_date = getdate(doc.end_date)
         
+        # 1. Process sick leave deduction
+        process_sick_leave_deduction(doc, employee, start_date, end_date)
+        
+        # 2. Process overtime allowance (earning)
+        process_overtime_allowance(doc, employee, start_date, end_date)
+        
+        # 3. Process shift permission deduction
+        process_shift_permission_deduction(doc, employee, start_date, end_date)
+        
+    except Exception as e:
+        frappe.log_error(f"Error in salary slip before_submit for {doc.name}: {str(e)}", "PHR Salary Slip Events")
+
+def process_sick_leave_deduction(doc, employee, start_date, end_date):
+    """Process sick leave deduction"""
+    try:
         # Get sick leave type
         sick_leave_type = frappe.db.get_value("Leave Type", {"is_sick_leave": 1})
         
@@ -25,6 +44,7 @@ def before_submit(doc, method=None):
             WHERE employee = %s
             AND leave_type = %s
             AND status = 'Approved'
+            AND docstatus = 1
             AND (
                 (from_date BETWEEN %s AND %s) OR
                 (to_date BETWEEN %s AND %s) OR
@@ -41,7 +61,6 @@ def before_submit(doc, method=None):
             basic_salary = employee_doc.base or 0
             
             if not basic_salary:
-                frappe.msgprint(_("Basic salary not found for employee {0}. Cannot calculate sick leave deduction.").format(employee), alert=True)
                 return
             
             # Calculate sick leave deduction
@@ -54,10 +73,41 @@ def before_submit(doc, method=None):
             if sick_leave_deduction_amount > 0:
                 # Add or update "Sick Leave Deduction" salary component
                 add_salary_component(doc, "Sick Leave Deduction", sick_leave_deduction_amount, "Deduction")
-                frappe.msgprint(f"Sick leave deduction of {sick_leave_deduction_amount} added to salary slip for {employee}.", "PHR Salary Slip Events")
         
     except Exception as e:
-        frappe.log_error(f"Error in salary slip before_submit for {doc.name}: {str(e)}", "PHR Salary Slip Events")
+        frappe.log_error(f"Error processing sick leave deduction: {str(e)}", "PHR Salary Slip Events")
+
+def process_overtime_allowance(doc, employee, start_date, end_date):
+    """Process overtime allowance as earning"""
+    try:
+        overtime_amount = get_overtime_allowance_for_salary_slip(employee, start_date, end_date)
+        
+        if overtime_amount > 0:
+            # Ensure component exists
+            if not frappe.db.exists("Salary Component", "Overtime Allowance"):
+                from phr.phr.utils.salary_component_integration import create_overtime_allowance_component
+                create_overtime_allowance_component()
+            
+            add_salary_component(doc, "Overtime Allowance", overtime_amount, "Earning")
+        
+    except Exception as e:
+        frappe.log_error(f"Error processing overtime allowance: {str(e)}", "PHR Salary Slip Events")
+
+def process_shift_permission_deduction(doc, employee, start_date, end_date):
+    """Process shift permission deduction"""
+    try:
+        deduction_amount = get_shift_permission_deduction_for_salary_slip(employee, start_date, end_date)
+        
+        if deduction_amount > 0:
+            # Ensure component exists
+            if not frappe.db.exists("Salary Component", "Shift Permission Deduction"):
+                from phr.phr.utils.salary_component_integration import create_shift_permission_deduction_component
+                create_shift_permission_deduction_component()
+            
+            add_salary_component(doc, "Shift Permission Deduction", deduction_amount, "Deduction")
+        
+    except Exception as e:
+        frappe.log_error(f"Error processing shift permission deduction: {str(e)}", "PHR Salary Slip Events")
 
 def add_salary_component(salary_slip_doc, component_name, amount, component_type):
     """Add or update salary component in salary slip"""

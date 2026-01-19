@@ -24,6 +24,10 @@
   "column_break_5",
   "notes",
   "section_break_4",
+  "deduct_from_leave",
+  "column_break_7",
+  "deduct_from_salary",
+  "section_break_5",
   "naming_series",
   "column_break_6",
   "amended_from"
@@ -124,6 +128,29 @@
   },
   {
    "fieldname": "section_break_4",
+   "fieldtype": "Section Break",
+   "label": "Deduction Details"
+  },
+  {
+   "fieldname": "deduct_from_leave",
+   "fieldtype": "Check",
+   "default": 0,
+   "label": "Deduct from Leave",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_7",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "deduct_from_salary",
+   "fieldtype": "Check",
+   "default": 0,
+   "label": "Deduct from Salary",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_5",
    "fieldtype": "Section Break"
   },
   {

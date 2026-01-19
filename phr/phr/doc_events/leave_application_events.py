@@ -19,6 +19,41 @@ def validate(doc, method=None):
             if leave_type_doc.is_muslim and not employee_doc.is_muslim:
                 frappe.throw(_("This leave type is only for Muslim employees."))
             
+            # Check Online Present leave type - one time per month validation
+            is_online_present = getattr(leave_type_doc, 'is_online_present', 0) or 0
+            if is_online_present:
+                if not doc.from_date:
+                    frappe.throw(_("From Date is required for Online Present leave."))
+                
+                leave_month = getdate(doc.from_date).month
+                leave_year = getdate(doc.from_date).year
+                
+                # Check if employee already used Online Present in this month
+                existing_online_present = frappe.get_all("Leave Application",
+                    filters={
+                        "employee": doc.employee,
+                        "leave_type": doc.leave_type,
+                        "from_date": ["between", [f"{leave_year}-{leave_month:02d}-01", f"{leave_year}-{leave_month:02d}-31"]],
+                        "status": ["in", ["Approved", "Open"]],
+                        "docstatus": ["!=", 2],  # Not cancelled
+                        "name": ["!=", doc.name]  # Exclude current document
+                    },
+                    fields=["name", "from_date"],
+                    limit=1
+                )
+                
+                if existing_online_present:
+                    frappe.throw(_(
+                        "Online Present leave can only be used once per month. "
+                        "You have already used Online Present leave in {0}."
+                    ).format(frappe.format(getdate(existing_online_present[0].from_date), {"fieldtype": "Date"})))
+                
+                # Validate that it's only one day
+                if doc.from_date and doc.to_date:
+                    total_days = date_diff(getdate(doc.to_date), getdate(doc.from_date)) + 1
+                    if total_days > 1:
+                        frappe.throw(_("Online Present leave can only be for one day."))
+            
             # Check sick leave deduction applicability
             if leave_type_doc.is_sick_leave:
                 doc.is_sick_leave_deduction_applicable = 1

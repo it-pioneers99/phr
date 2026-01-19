@@ -181,3 +181,38 @@ def setup_leave_type_fields():
     except Exception as e:
         frappe.log_error(f"Error creating Leave Type custom fields: {str(e)}", "Leave Type Custom Fields")
         raise
+
+
+@frappe.whitelist()
+def get_employee_custom_fields():
+    """
+    Get all custom fields for Employee doctype
+    Returns both configured fields and existing fields in the system
+    """
+    try:
+        # Get all custom fields from database
+        custom_fields = frappe.get_all(
+            "Custom Field",
+            filters={"dt": "Employee"},
+            fields=["fieldname", "label", "fieldtype", "options", "default", "reqd", "read_only", "hidden", "description"],
+            order_by="idx"
+        )
+        
+        # Get configured fields from config file
+        configured_fields = []
+        try:
+            from phr.phr.server_scripts.phr_employee_custom_fields_config import EMPLOYEE_CUSTOM_FIELDS
+            configured_fields = EMPLOYEE_CUSTOM_FIELDS
+        except ImportError:
+            pass
+        
+        return {
+            "status": "success",
+            "custom_fields": custom_fields,
+            "configured_fields": configured_fields,
+            "total_custom_fields": len(custom_fields),
+            "total_configured_fields": len(configured_fields)
+        }
+    except Exception as e:
+        frappe.log_error(f"Error getting Employee custom fields: {str(e)}", "Get Employee Custom Fields")
+        return {"status": "error", "message": str(e)}

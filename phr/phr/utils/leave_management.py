@@ -297,26 +297,155 @@ def get_employee_leave_summary(employee):
         return None
 
 def update_leave_balances_daily():
-    """Daily task to update leave balances for all employees"""
+    """
+    Daily task to update leave balances for all employees
+    This function:
+    1. Updates annual leave balances based on months of service
+    2. Syncs leave allocations with actual usage
+    3. Updates employee leave balance fields
+    """
     try:
         # Get all active employees
         employees = frappe.get_list(
             "Employee",
-            filters={"status": "Active"},
-            fields=["name"]
+            filters={"status": "Active", "date_of_joining": ["is", "set"]},
+            fields=["name", "date_of_joining"]
         )
         
         updated_count = 0
-        for employee in employees:
-            if update_employee_leave_balances(employee.name):
-                updated_count += 1
+        errors = []
         
-        frappe.msgprint(f"Updated leave balances for {updated_count} employees")
-        return updated_count
+        for employee in employees:
+            try:
+                # Update employee leave balances
+                result = update_employee_leave_balances(employee.name)
+                if result:
+                    updated_count += 1
+        
+                # Also sync annual leave allocation based on months of service
+                sync_annual_leave_allocation_daily(employee.name)
+                
+            except Exception as e:
+                error_msg = f"Error updating leave balance for {employee.name}: {str(e)}"
+                errors.append(error_msg)
+                frappe.log_error(error_msg, "PHR Daily Leave Balance Sync")
+        
+        # Log summary
+        if updated_count > 0:
+            frappe.logger().info(f"Daily leave balance sync: Updated {updated_count} employees")
+        
+        if errors:
+            frappe.logger().warning(f"Daily leave balance sync: {len(errors)} errors occurred")
+        
+        return {
+            "status": "success",
+            "updated_count": updated_count,
+            "errors": len(errors)
+        }
         
     except Exception as e:
         frappe.log_error(f"Error in daily leave balance update: {str(e)}", "PHR Leave Management")
-        return 0
+        return {"status": "error", "message": str(e)}
+
+def sync_annual_leave_allocation_daily(employee):
+    """
+    Sync annual leave allocation daily based on months of service
+    This ensures the allocation matches the actual months worked
+    """
+    try:
+        from phr.phr.utils.leave_balance_calculation import (
+            calculate_months_of_service,
+            calculate_annual_leave_balance
+        )
+        from phr.phr.utils.leave_allocation_utils import get_or_create_leave_type
+        
+        employee_doc = frappe.get_doc("Employee", employee)
+        
+        if not employee_doc.date_of_joining:
+            return False
+        
+        # Calculate months and years of service
+        joining_date = getdate(employee_doc.date_of_joining)
+        current_date = getdate(nowdate())
+        months_of_service = calculate_months_of_service(joining_date, current_date)
+        years_of_service = months_of_service / 12
+        
+        # Get annual leave type
+        annual_leave_type = frappe.db.get_value("Leave Type", {"is_annual_leave": 1}, "name")
+        if not annual_leave_type:
+            # Try to get or create it
+            annual_leave_type = get_or_create_leave_type("Annual Leave", is_annual_leave=True)
+        
+        # Calculate expected annual leave balance based on months of service
+        is_additional_annual_leave = frappe.db.get_value("Employee", employee, "is_additional_annual_leave") or 0
+        
+        if is_additional_annual_leave:
+            # 2.5 days per month = 30 days per year
+            expected_balance = months_of_service * 2.5
+        elif years_of_service < 5:
+            # 1.75 days per month = 21 days per year
+            expected_balance = months_of_service * 1.75
+        else:
+            # 2.5 days per month = 30 days per year
+            expected_balance = months_of_service * 2.5
+        
+        # Get current year allocation
+        current_year = current_date.year
+        leave_period_start = getdate(f"{current_year}-01-01")
+        leave_period_end = getdate(f"{current_year}-12-31")
+        
+        # Find existing allocation
+        existing_allocation = frappe.get_all(
+            "Leave Allocation",
+            filters={
+                "employee": employee,
+                "leave_type": annual_leave_type,
+                "from_date": [">=", leave_period_start],
+                "to_date": ["<=", leave_period_end],
+                "docstatus": 1
+            },
+            fields=["name", "total_leaves_allocated"],
+            limit=1
+        )
+        
+        # Calculate expected allocation for the year (capped at annual limit)
+        if is_additional_annual_leave:
+            annual_limit = 30
+        elif years_of_service < 5:
+            annual_limit = 21
+        else:
+            annual_limit = 30
+        
+        # For current year, calculate based on months worked this year
+        months_this_year = calculate_months_of_service(
+            max(joining_date, leave_period_start),
+            min(current_date, leave_period_end)
+        )
+        
+        if is_additional_annual_leave:
+            expected_allocation = min(months_this_year * 2.5, annual_limit)
+        elif years_of_service < 5:
+            expected_allocation = min(months_this_year * 1.75, annual_limit)
+        else:
+            expected_allocation = min(months_this_year * 2.5, annual_limit)
+        
+        # Update allocation if it exists and needs adjustment
+        if existing_allocation:
+            allocation_doc = frappe.get_doc("Leave Allocation", existing_allocation[0].name)
+            current_allocation = allocation_doc.total_leaves_allocated or 0
+            
+            # Only update if there's a significant difference (more than 0.1 days)
+            if abs(current_allocation - expected_allocation) > 0.1:
+                allocation_doc.total_leaves_allocated = expected_allocation
+                allocation_doc.save()
+                frappe.db.commit()
+                return True
+        
+        return False
+        
+    except Exception as e:
+        frappe.log_error(f"Error syncing annual leave allocation for {employee}: {str(e)}", "PHR Daily Leave Balance Sync")
+        return False
 
 def check_contract_expiration_notifications():
     """Check and send contract expiration notifications"""

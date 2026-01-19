@@ -77,7 +77,25 @@ def create_automatic_leave_allocation(employee_id):
             employee_id, sick_leave_type, 365, current_year  # 365 days for sick leave
         )
         if sick_allocation:
-            allocations_created.append(f"Sick Leave: 365 days")
+            allocations_created.append(f"{sick_leave_type}: 365 days")
+        
+        # Get or create Online Present leave type
+        online_present_type = get_or_create_leave_type("Online Present", is_online_present=True)
+        
+        # Online Present Allocation (1 day per month = 12 days per year)
+        # Calculate remaining months in current year
+        if joining_date.year == current_year:
+            remaining_months = 12 - joining_date.month + 1
+        else:
+            remaining_months = 12
+        
+        online_present_days = remaining_months  # 1 day per month
+        
+        online_present_allocation = create_leave_allocation_record(
+            employee_id, online_present_type, online_present_days, current_year
+        )
+        if online_present_allocation:
+            allocations_created.append(f"Online Present: {online_present_days} days")
         
         return {
             "status": "success", 
@@ -90,20 +108,26 @@ def create_automatic_leave_allocation(employee_id):
         frappe.log_error(f"Error in create_automatic_leave_allocation: {str(e)}")
         return {"status": "error", "message": str(e)}
 
-def get_or_create_leave_type(leave_type_name, is_annual=False, is_sick=False):
+def get_or_create_leave_type(leave_type_name, is_annual=False, is_sick=False, is_online_present=False):
     """
     Get existing leave type or create new one
     """
     try:
         leave_type = frappe.get_doc("Leave Type", leave_type_name)
+        # Update flags if they don't match
+        if is_online_present and not getattr(leave_type, 'is_online_present', 0):
+            leave_type.is_online_present = 1
+            leave_type.save()
+        return leave_type.name
     except frappe.DoesNotExistError:
         # Create new leave type
         leave_type = frappe.get_doc({
             "doctype": "Leave Type",
             "leave_type_name": leave_type_name,
-            "max_leaves_allowed": 365 if is_sick else 30,
+            "max_leaves_allowed": 12 if is_online_present else (365 if is_sick else 30),
             "is_annual_leave": 1 if is_annual else 0,
             "is_sick_leave": 1 if is_sick else 0,
+            "is_online_present": 1 if is_online_present else 0,
             "is_paid_leave": 1,
             "include_holiday": 0,
             "is_compensatory": 0
@@ -341,6 +365,78 @@ def create_custom_fields():
     
     frappe.db.commit()
     return "✅ All custom fields and leave type created successfully!"
+
+@frappe.whitelist()
+def allocate_online_present_monthly():
+    """
+    Allocate Online Present leave type monthly (1 day per month) for all active employees
+    This should be run as a scheduled task on the 1st of each month
+    """
+    try:
+        # Get Online Present leave type
+        online_present_type = frappe.db.get_value("Leave Type", {"is_online_present": 1}, "name")
+        
+        if not online_present_type:
+            frappe.log_error("Online Present leave type not found. Please create it first.", "Online Present Allocation")
+            return {"status": "error", "message": "Online Present leave type not found"}
+        
+        # Get current month start and end
+        current_date = getdate(nowdate())
+        month_start = get_first_day(current_date)
+        month_end = get_last_day(current_date)
+        
+        # Get all active employees
+        employees = frappe.get_all("Employee",
+            filters={"status": "Active"},
+            fields=["name"]
+        )
+        
+        allocations_created = 0
+        errors = []
+        
+        for employee in employees:
+            try:
+                # Check if allocation already exists for this month
+                existing = frappe.db.exists("Leave Allocation", {
+                    "employee": employee.name,
+                    "leave_type": online_present_type,
+                    "from_date": month_start,
+                    "to_date": month_end,
+                    "docstatus": 1
+                })
+                
+                if existing:
+                    continue
+                
+                # Create monthly allocation (1 day)
+                allocation = frappe.new_doc("Leave Allocation")
+                allocation.employee = employee.name
+                allocation.leave_type = online_present_type
+                allocation.from_date = month_start
+                allocation.to_date = month_end
+                allocation.new_leaves_allocated = 1
+                allocation.insert()
+                allocation.submit()
+                
+                allocations_created += 1
+                
+            except Exception as e:
+                errors.append(f"Employee {employee.name}: {str(e)}")
+                frappe.log_error(f"Error allocating Online Present for {employee.name}: {str(e)}", "Online Present Allocation")
+        
+        frappe.db.commit()
+        
+        return {
+            "status": "success",
+            "message": f"Allocated Online Present leave for {allocations_created} employees",
+            "allocations_created": allocations_created,
+            "total_employees": len(employees),
+            "errors": errors
+        }
+        
+    except Exception as e:
+        frappe.log_error(f"Error in allocate_online_present_monthly: {str(e)}", "Online Present Allocation")
+        return {"status": "error", "message": str(e)}
 
 @frappe.whitelist()
 def test_annual_leave_functionality():

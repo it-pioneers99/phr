@@ -56,37 +56,92 @@ def _classify(shift, checkin_dt: datetime, log_type: str):
 
 
 def _compute_progressive_level(employee: str, penalty_type: str, penalty_date: date) -> int:
-    """Progression based on current calendar month count of same penalty type."""
-    start, end = _month_bounds(penalty_date)
+    """
+    Progression based on penalty period (day 21 to day 20 of next month).
+    Counts violations within the current penalty period (30 days).
+    If employee reaches last level (4th), subsequent violations in same period use last level.
+    """
+    # Calculate penalty period (day 21 to day 20 of next month)
+    if penalty_date.day >= 21:
+        # Period starts on day 21 of current month
+        period_start = penalty_date.replace(day=21)
+        # Period ends on day 20 of next month
+        if penalty_date.month == 12:
+            period_end = penalty_date.replace(year=penalty_date.year + 1, month=1, day=20)
+        else:
+            period_end = penalty_date.replace(month=penalty_date.month + 1, day=20)
+    else:
+        # If before day 21, period is from day 21 of previous month to day 20 of current month
+        if penalty_date.month == 1:
+            period_start = penalty_date.replace(year=penalty_date.year - 1, month=12, day=21)
+        else:
+            period_start = penalty_date.replace(month=penalty_date.month - 1, day=21)
+        period_end = penalty_date.replace(day=20)
+    
+    # Count previous violations of same type within current penalty period
     existing_count = frappe.db.count(
         "Penalty Record",
         filters={
             "employee": employee,
             "violation_type": penalty_type,
-            "violation_date": ("between", [start, end]),
+            "violation_date": [">=", period_start],
+            "violation_date": ["<=", period_end],
+            "violation_date": ["<", penalty_date],  # Exclude current violation
+            "docstatus": 1  # Only count submitted/approved records
         },
     )
-    return int(existing_count) + 1
+    
+    # Get the maximum level defined for this penalty type
+    max_level = _get_max_penalty_level(penalty_type)
+    
+    # Calculate occurrence number (1st, 2nd, 3rd, 4th+)
+    occurrence_number = int(existing_count) + 1
+
+    # If occurrence exceeds max level, use max level (don't go beyond)
+    if occurrence_number > max_level:
+        occurrence_number = max_level
+    
+    return occurrence_number
+
+def _get_max_penalty_level(penalty_type: str) -> int:
+    """Get the maximum penalty level (occurrence_number) defined for a penalty type"""
+    try:
+        penalty_type_doc = frappe.get_doc("Penalty Type", penalty_type)
+        if penalty_type_doc.penalty_levels:
+            max_level = max([level.occurrence_number or 0 for level in penalty_type_doc.penalty_levels])
+            return max_level if max_level > 0 else 4  # Default to 4 if no levels found
+        return 4  # Default maximum level
+    except Exception:
+        return 4  # Default maximum level
 
 
-def _get_percentage_for_level(penalty_type: str, level: int) -> float:
-    row = frappe.db.get_value(
-        "Penelty Type Level",
-        {"parent": penalty_type, "occurrence_number": level},
-        ["penalty_value_level"],
-        as_dict=True,
-    )
-    if row:
-        return float(row.penalty_value_level or 0)
-    # fallback to highest defined level
-    last = frappe.db.get_value(
-        "Penelty Type Level",
-        {"parent": penalty_type},
-        ["penalty_value_level"],
-        order_by="occurrence_number desc",
-        as_dict=True,
-    )
-    return float((last or {}).get("penalty_value_level") or 0)
+def _get_percentage_for_level(penalty_type_doc_name: str, level: int) -> float:
+    """
+    Get penalty percentage value for a specific level from Penalty Type.
+    Returns the penalty_value_level for the matching occurrence_number.
+    """
+    try:
+        # Get Penalty Type document
+        penalty_type_doc = frappe.get_doc("Penalty Type", penalty_type_doc_name)
+        
+        if not penalty_type_doc.penalty_levels:
+            return 0.0
+        
+        # Find matching level by occurrence_number
+        for level_row in penalty_type_doc.penalty_levels:
+            if level_row.occurrence_number == level:
+                return float(level_row.penalty_value_level or 0)
+        
+        # If no exact match, use the highest defined level
+        if penalty_type_doc.penalty_levels:
+            highest_level = max(penalty_type_doc.penalty_levels, key=lambda x: x.occurrence_number or 0)
+            return float(highest_level.penalty_value_level or 0)
+        
+        return 0.0
+        
+    except Exception as e:
+        frappe.log_error(f"Error getting penalty percentage for level {level}: {str(e)}")
+        return 0.0
 
 
 @frappe.whitelist()
@@ -111,9 +166,21 @@ def process_attendance_penalty_simple(employee: str, checkin_time: str, log_type
     if not penalty_type:
         return {"penalty_created": False, "penalty_type": None, "penalty_reason": penalty_reason}
 
-    # progressive level per policy
-    occurrence_level = _compute_progressive_level(employee, penalty_type, checkin_dt.date())
-    penalty_percentage = _get_percentage_for_level(penalty_type, occurrence_level)
+    # Find Penalty Type document by penalty_type field value
+    penalty_type_doc_name = frappe.db.exists("Penalty Type", {"penalty_type": penalty_type})
+    if not penalty_type_doc_name:
+        frappe.log_error(
+            f"Penalty Type '{penalty_type}' not found in database",
+            "Penalty Record Creation"
+        )
+        return {
+            "penalty_created": False,
+            "reason": f"Penalty Type '{penalty_type}' not found"
+        }
+    
+    # progressive level per policy (penalty period: day 21 to day 20 of next month)
+    occurrence_level = _compute_progressive_level(employee, penalty_type_doc_name, checkin_dt.date())
+    penalty_percentage = _get_percentage_for_level(penalty_type_doc_name, occurrence_level)
 
     # Map to site's Penalty Record schema
     violation_date = checkin_dt.date()
@@ -137,16 +204,61 @@ def process_attendance_penalty_simple(employee: str, checkin_time: str, log_type
 
     created_name = None
     try:
+        # Get Penalty Type document to access penalty levels
+        penalty_type_doc = frappe.get_doc("Penalty Type", penalty_type_doc_name)
+        
         rec = frappe.new_doc("Penalty Record")
         rec.employee = employee
         rec.violation_date = violation_date
-        rec.violation_type = violation_type
+        rec.violation_type = penalty_type_doc_name  # Use document name, not field value
         rec.violation_description = violation_description
         rec.occurrence_number = occurrence_level
         rec.lateness_minutes = lateness_minutes
         rec.early_minutes = early_minutes
         rec.total_penalty_value = total_penalty_value
         rec.penalty_amount = penalty_amount
+        
+        # Add penalty level to child table
+        if penalty_type_doc.penalty_levels:
+            # Find the penalty level matching the occurrence number
+            matching_level = None
+            for level in penalty_type_doc.penalty_levels:
+                if level.occurrence_number == occurrence_level:
+                    matching_level = level
+                    break
+            
+            if matching_level:
+                # Determine penalty type level based on value
+                # If value is 0, it's a Warning; otherwise Percentage Deduction
+                penalty_type_level = "Warning" if (matching_level.penalty_value_level or 0) == 0 else "Percentage Deduction"
+                
+                rec.append("penalty_levels", {
+                    "occurrence_number": matching_level.occurrence_number,
+                    "penalty_type_level": penalty_type_level,
+                    "penalty_value_level": matching_level.penalty_value_level or penalty_percentage,
+                    "is_percentage_level": matching_level.is_percentage_level or 1
+                })
+            else:
+                # If no exact match, use the highest level or create default
+                if penalty_type_doc.penalty_levels:
+                    highest_level = max(penalty_type_doc.penalty_levels, key=lambda x: x.occurrence_number or 0)
+                    penalty_type_level = "Warning" if (highest_level.penalty_value_level or 0) == 0 else "Percentage Deduction"
+                    
+                    rec.append("penalty_levels", {
+                        "occurrence_number": occurrence_level,
+                        "penalty_type_level": penalty_type_level,
+                        "penalty_value_level": penalty_percentage,
+                        "is_percentage_level": highest_level.is_percentage_level or 1
+                    })
+                else:
+                    # Default fallback
+                    rec.append("penalty_levels", {
+                        "occurrence_number": occurrence_level,
+                        "penalty_type_level": "Percentage Deduction",
+                        "penalty_value_level": penalty_percentage,
+                        "is_percentage_level": 1
+                    })
+        
         rec.insert(ignore_permissions=True)
         if getattr(rec, "is_submittable", 0) or getattr(rec.meta, "is_submittable", 0):
             try:

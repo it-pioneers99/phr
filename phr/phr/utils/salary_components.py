@@ -69,34 +69,125 @@ def create_sick_leave_salary_components():
         return {"status": "error", "message": str(e)}
 
 @frappe.whitelist()
-def calculate_sick_leave_deduction(employee_id, start_date, end_date):
+def calculate_sick_leave_deduction(employee_id, start_date, end_date, monthly_salary=None):
     """
     Calculate sick leave deduction for a specific period
+    Uses provided monthly_salary (CTC - Cost to Company) if given, otherwise fetches from salary structure
     """
     try:
-        # Get sick leave applications for the period
-        sick_leaves = frappe.get_all("Leave Application",
-            filters={
-                "employee": employee_id,
-                "leave_type": ["in", get_sick_leave_types()],
-                "from_date": [">=", start_date],
-                "to_date": ["<=", end_date],
-                "status": "Approved"
-            },
-            fields=["from_date", "to_date", "total_leave_days"]
-        )
+        # Get sick leave applications that overlap with the period
+        # A leave overlaps if: from_date <= end_date AND to_date >= start_date
+        sick_leave_types = get_sick_leave_types()
         
-        total_sick_days = sum(leave.total_leave_days for leave in sick_leaves)
-        
-        if total_sick_days == 0:
+        if not sick_leave_types:
+            frappe.log_error(f"No sick leave types found for employee {employee_id}", "Sick Leave Calculation")
+            # Still return success with 0 days but include a message
+            if monthly_salary:
+                daily_salary_rate = float(monthly_salary) / 30
+            else:
+                daily_salary_rate = get_daily_salary_rate(employee_id)
+            
             return {
                 "status": "success",
-                "message": "No sick leave taken in the specified period",
+                "message": "No sick leave types configured. Please configure leave types with 'Is Sick Leave' checked.",
                 "data": {
                     "sick_days_taken": 0,
                     "deduction_25_percent": 0,
                     "deduction_100_percent": 0,
-                    "total_deduction": 0
+                    "total_deduction": 0,
+                    "daily_salary_rate": daily_salary_rate,
+                    "monthly_salary": monthly_salary or (daily_salary_rate * 30),
+                    "leave_details": [],
+                    "total_leaves_count": 0,
+                    "warning": "No sick leave types found in system"
+                }
+            }
+        
+        # Get all approved sick leave applications for the employee
+        all_sick_leaves = frappe.get_all("Leave Application",
+            filters={
+                "employee": employee_id,
+                "leave_type": ["in", sick_leave_types],
+                "docstatus": 1  # Submitted/Approved
+            },
+            fields=["from_date", "to_date", "total_leave_days", "name", "status"]
+        )
+        
+        # Filter leaves that overlap with the period
+        start_date_obj = getdate(start_date)
+        end_date_obj = getdate(end_date)
+        sick_leaves = []
+        
+        for leave in all_sick_leaves:
+            leave_from = getdate(leave.from_date)
+            leave_to = getdate(leave.to_date)
+            
+            # Check if leave overlaps with the period
+            # Leave overlaps if: leave_from <= end_date AND leave_to >= start_date
+            if leave_from <= end_date_obj and leave_to >= start_date_obj:
+                sick_leaves.append(leave)
+        
+        # Calculate total sick days by calculating difference between from_date and to_date for each leave
+        # Only count days that fall within the selected period
+        total_sick_days = 0
+        leave_details = []
+        
+        for leave in sick_leaves:
+            leave_from = getdate(leave.from_date)
+            leave_to = getdate(leave.to_date)
+            
+            # Calculate the actual period for this leave within the selected range
+            # Use the later of leave_from and start_date, and earlier of leave_to and end_date
+            period_start = max(leave_from, start_date_obj)
+            period_end = min(leave_to, end_date_obj)
+            
+            # Calculate days within the period (inclusive)
+            days_in_period = date_diff(period_end, period_start) + 1
+            
+            # Also calculate total days for the leave (for display)
+            total_leave_days = date_diff(leave_to, leave_from) + 1
+            
+            total_sick_days += days_in_period
+            leave_details.append({
+                "leave_name": leave.name,
+                "from_date": leave.from_date,
+                "to_date": leave.to_date,
+                "calculated_days": days_in_period,
+                "total_leave_days": total_leave_days,
+                "stored_days": leave.total_leave_days or 0,
+                "period_start": period_start.strftime("%Y-%m-%d"),
+                "period_end": period_end.strftime("%Y-%m-%d")
+            })
+        
+        if total_sick_days == 0:
+            # Still calculate daily salary rate for display
+            if monthly_salary:
+                daily_salary_rate = float(monthly_salary) / 30
+            else:
+                daily_salary_rate = get_daily_salary_rate(employee_id)
+            
+            # Provide more information about why no days were found
+            debug_info = {
+                "sick_leave_types_found": len(sick_leave_types),
+                "total_leaves_found": len(all_sick_leaves),
+                "leaves_in_period": len(sick_leaves),
+                "period_start": start_date,
+                "period_end": end_date
+            }
+            
+            return {
+                "status": "success",
+                "message": f"No sick leave taken in the specified period ({start_date} to {end_date}). Found {len(all_sick_leaves)} total sick leave(s) for this employee.",
+                "data": {
+                    "sick_days_taken": 0,
+                    "deduction_25_percent": 0,
+                    "deduction_100_percent": 0,
+                    "total_deduction": 0,
+                    "daily_salary_rate": daily_salary_rate,
+                    "monthly_salary": monthly_salary or (daily_salary_rate * 30),
+                    "leave_details": [],
+                    "total_leaves_count": 0,
+                    "debug_info": debug_info
                 }
             }
         
@@ -109,8 +200,13 @@ def calculate_sick_leave_deduction(employee_id, start_date, end_date):
         days_31_90 = min(max(total_sick_days - 30, 0), 60)
         days_90_plus = max(total_sick_days - 90, 0)
         
-        # Calculate deductions (assuming daily salary rate)
-        daily_salary_rate = get_daily_salary_rate(employee_id)
+        # Calculate deductions - use provided CTC (Cost to Company) or fetch from structure
+        if monthly_salary:
+            daily_salary_rate = float(monthly_salary) / 30
+            monthly_salary_used = float(monthly_salary)  # This is actually CTC
+        else:
+            daily_salary_rate = get_daily_salary_rate(employee_id)
+            monthly_salary_used = daily_salary_rate * 30
         
         deduction_25_percent = days_31_90 * daily_salary_rate * 0.25
         deduction_100_percent = days_90_plus * daily_salary_rate
@@ -127,7 +223,10 @@ def calculate_sick_leave_deduction(employee_id, start_date, end_date):
                 "deduction_25_percent": deduction_25_percent,
                 "deduction_100_percent": deduction_100_percent,
                 "total_deduction": total_deduction,
-                "daily_salary_rate": daily_salary_rate
+                "daily_salary_rate": daily_salary_rate,
+                "monthly_salary": monthly_salary_used,
+                "leave_details": leave_details,
+                "total_leaves_count": len(sick_leaves)
             }
         }
     

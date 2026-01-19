@@ -1,8 +1,8 @@
 import frappe
 from frappe.utils import getdate, today, add_days
-from phr.phr.phr.utils.leave_calculation_engine import LeaveCalculationEngine, get_enhanced_leave_analysis, check_employee_eligibility
-from phr.phr.phr.utils.contract_management import check_contract_end_notifications, get_contract_summary
-from phr.phr.phr.utils.salary_components import create_salary_components
+from phr.phr.utils.leave_calculation_engine import LeaveCalculationEngine, get_enhanced_leave_analysis, check_employee_eligibility
+from phr.phr.utils.contract_management import check_contract_end_notifications, get_contract_summary
+from phr.phr.utils.salary_components import create_salary_components
 
 @frappe.whitelist()
 def get_employee_leave_summary(employee_id):

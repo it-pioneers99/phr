@@ -97,12 +97,19 @@ class ShiftPermissionRequest(Document):
         if not self.hours_requested:
             return
         
-        # Check if employee has available leave balance
-        # This would need integration with HRMS leave management
-        # For now, we'll just create a note
+        # Only process if 4 hours or more (half day)
+        if self.hours_requested < 4:
+            return
         
-        if self.hours_requested >= 4:  # Half day or more
-            frappe.msgprint(_("Please check if this permission should be deducted from annual leave balance"))
+        # Process leave deduction using utility function
+        from phr.phr.utils.salary_component_integration import process_shift_permission_leave_deduction
+        process_shift_permission_leave_deduction(self)
         
-        # If no leave balance available, this would be deducted from salary
-        # This would be handled in salary slip calculation
+        # Check result and show message
+        deduct_from_leave = frappe.db.get_value("Shift Permission Request", self.name, "deduct_from_leave")
+        deduct_from_salary = frappe.db.get_value("Shift Permission Request", self.name, "deduct_from_salary")
+        
+        if deduct_from_leave:
+            frappe.msgprint(_("Permission hours deducted from annual leave balance"))
+        elif deduct_from_salary:
+            frappe.msgprint(_("Insufficient leave balance. This will be deducted from salary in the next salary slip."))
