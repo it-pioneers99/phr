@@ -2665,3 +2665,254 @@ function reset_contract_notifications(frm) {
         }
     });
 }
+
+// ============================================================================
+// EMPLOYEE DETAILS ANALYSIS (from phr/phr/phr/public/js/employee.js)
+// ============================================================================
+
+function show_employee_details_analysis_dropdown(frm) {
+    if (!frm.doc.name) {
+        frappe.msgprint(__('Please save the employee record first'));
+        return;
+    }
+    
+    frappe.call({
+        method: 'phr.phr.api.leave_management.get_employee_leave_summary',
+        args: {
+            employee_id: frm.doc.name
+        },
+        freeze: true,
+        freeze_message: __('Loading Employee Details Analysis...'),
+        callback: function(r) {
+            if (r.message && !r.message.status) {
+                display_employee_details_analysis(frm, r.message);
+            } else {
+                frappe.msgprint({
+                    title: __('Error'),
+                    message: r.message?.message || __('Failed to load employee details analysis'),
+                    indicator: 'red'
+                });
+            }
+        }
+    });
+}
+
+function display_employee_details_analysis(frm, data) {
+    const employee_info = data.employee_info || {};
+    const annual_leave = data.annual_leave || {};
+    const sick_leave = data.sick_leave || {};
+    const allocations = data.allocations || [];
+    const applications = data.applications || [];
+    
+    let html = `
+        <div class="employee-details-analysis" style="font-family: Arial, sans-serif; max-width: 1000px;">
+            <style>
+                .employee-details-analysis .section { margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #3498db; }
+                .employee-details-analysis .section-title { font-weight: bold; font-size: 16px; color: #2c3e50; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 2px solid #3498db; }
+                .employee-details-analysis .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #dee2e6; }
+                .employee-details-analysis .info-label { color: #495057; font-weight: 500; }
+                .employee-details-analysis .info-value { font-weight: bold; color: #2c3e50; }
+                .employee-details-analysis .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+                .employee-details-analysis .badge-success { background: #d4edda; color: #155724; }
+                .employee-details-analysis .badge-warning { background: #fff3cd; color: #856404; }
+                .employee-details-analysis .badge-danger { background: #f8d7da; color: #721c24; }
+                .employee-details-analysis .badge-info { background: #d1ecf1; color: #0c5460; }
+                .employee-details-analysis table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                .employee-details-analysis table th { background: #e9ecef; padding: 10px; text-align: left; border: 1px solid #dee2e6; }
+                .employee-details-analysis table td { padding: 8px; border: 1px solid #dee2e6; }
+                .employee-details-analysis table tr:nth-child(even) { background: #f8f9fa; }
+            </style>
+            
+            <!-- Employee Information Section -->
+            <div class="section">
+                <div class="section-title">👤 Employee Information</div>
+                <div class="info-row">
+                    <span class="info-label">Employee Name:</span>
+                    <span class="info-value">${employee_info.employee_name || frm.doc.employee_name || 'N/A'}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Date of Joining:</span>
+                    <span class="info-value">${employee_info.date_of_joining ? frappe.datetime.str_to_user(employee_info.date_of_joining) : (frm.doc.date_of_joining ? frappe.datetime.str_to_user(frm.doc.date_of_joining) : 'N/A')}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Years of Service:</span>
+                    <span class="info-value">${employee_info.working_years ? employee_info.working_years.toFixed(2) : '0'} years (${employee_info.working_months || 0} months)</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Contract End Date:</span>
+                    <span class="info-value">${employee_info.contract_end_date ? frappe.datetime.str_to_user(employee_info.contract_end_date) : (frm.doc.contract_end_date ? frappe.datetime.str_to_user(frm.doc.contract_end_date) : 'N/A')}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Characteristics:</span>
+                    <span class="info-value">
+                        ${employee_info.is_muslim ? '<span class="badge badge-info">Muslim</span>' : ''}
+                        ${employee_info.is_female ? '<span class="badge badge-info">Female</span>' : ''}
+                        ${!employee_info.is_muslim && !employee_info.is_female ? '<span class="badge">Standard</span>' : ''}
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Annual Leave Eligibility:</span>
+                    <span class="info-value">
+                        ${employee_info.is_eligible_30_days ? 
+                            '<span class="badge badge-success">30 Days (5+ Years)</span>' : 
+                            '<span class="badge badge-warning">21 Days (<5 Years)</span>'}
+                        ${employee_info.is_additional_annual_leave ? 
+                            '<span class="badge badge-success">⭐ Additional Annual Leave</span>' : ''}
+                    </span>
+                </div>
+            </div>
+            
+            <!-- Annual Leave Summary Section -->
+            <div class="section">
+                <div class="section-title">📅 Annual Leave Summary</div>
+                <div class="info-row">
+                    <span class="info-label">Eligible Days:</span>
+                    <span class="info-value">${annual_leave.eligible_days || (employee_info.is_eligible_30_days ? 30 : 21)} days</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Allocated Days:</span>
+                    <span class="info-value">${annual_leave.allocated_days || annual_leave.total_leaves_allocated || 0} days</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Used Days:</span>
+                    <span class="info-value">${annual_leave.used_days || annual_leave.leaves_taken || 0} days</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Remaining Days:</span>
+                    <span class="info-value" style="color: ${(annual_leave.remaining_days || annual_leave.unused_leaves || 0) > 0 ? '#28a745' : '#dc3545'};">
+                        ${annual_leave.remaining_days || annual_leave.unused_leaves || 0} days
+                    </span>
+                </div>
+                ${annual_leave.calculation_reason ? `
+                <div class="info-row">
+                    <span class="info-label">Calculation Reason:</span>
+                    <span class="info-value" style="font-size: 12px; color: #6c757d;">${annual_leave.calculation_reason}</span>
+                </div>
+                ` : ''}
+            </div>
+            
+            <!-- Sick Leave Summary Section -->
+            <div class="section">
+                <div class="section-title">🏥 Sick Leave Summary</div>
+                <div class="info-row">
+                    <span class="info-label">Allocated Days:</span>
+                    <span class="info-value">${sick_leave.allocated_days || sick_leave.total_leaves_allocated || 'Unlimited'} days</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Used Days:</span>
+                    <span class="info-value">${sick_leave.used_days || sick_leave.leaves_taken || 0} days</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Remaining Days:</span>
+                    <span class="info-value">${sick_leave.remaining_days || sick_leave.unused_leaves || 'Unlimited'} days</span>
+                </div>
+                ${sick_leave.salary_deduction ? `
+                <div class="info-row">
+                    <span class="info-label">Salary Deduction:</span>
+                    <span class="info-value" style="color: #dc3545;">${sick_leave.salary_deduction} SAR</span>
+                </div>
+                ` : ''}
+            </div>
+            
+            <!-- Leave Allocations Table -->
+            <div class="section">
+                <div class="section-title">📋 Leave Allocations</div>
+                ${allocations.length > 0 ? `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Leave Type</th>
+                            <th>From Date</th>
+                            <th>To Date</th>
+                            <th>Total Allocated</th>
+                            <th>Unused</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${allocations.map(alloc => `
+                            <tr>
+                                <td>${alloc.leave_type || 'N/A'}</td>
+                                <td>${alloc.from_date ? frappe.datetime.str_to_user(alloc.from_date) : 'N/A'}</td>
+                                <td>${alloc.to_date ? frappe.datetime.str_to_user(alloc.to_date) : 'N/A'}</td>
+                                <td>${alloc.total_leaves_allocated || 0} days</td>
+                                <td>${alloc.unused_leaves || 0} days</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                ` : '<p style="color: #6c757d; padding: 10px;">No leave allocations found for this employee.</p>'}
+            </div>
+            
+            <!-- Leave Applications Table -->
+            <div class="section">
+                <div class="section-title">📝 Recent Leave Applications</div>
+                ${applications.length > 0 ? `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Leave Type</th>
+                            <th>From Date</th>
+                            <th>To Date</th>
+                            <th>Total Days</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${applications.slice(0, 10).map(app => `
+                            <tr>
+                                <td>${app.leave_type || 'N/A'}</td>
+                                <td>${app.from_date ? frappe.datetime.str_to_user(app.from_date) : 'N/A'}</td>
+                                <td>${app.to_date ? frappe.datetime.str_to_user(app.to_date) : 'N/A'}</td>
+                                <td>${app.total_leave_days || 0} days</td>
+                                <td>
+                                    <span class="badge ${app.status === 'Approved' ? 'badge-success' : app.status === 'Rejected' ? 'badge-danger' : 'badge-warning'}">
+                                        ${app.status || 'Draft'}
+                                    </span>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                ` : '<p style="color: #6c757d; padding: 10px;">No leave applications found for this employee.</p>'}
+            </div>
+        </div>
+    `;
+    
+    const dialog = new frappe.ui.Dialog({
+        title: __('Employee Details Analysis - ' + (employee_info.employee_name || frm.doc.employee_name)),
+        fields: [
+            {
+                fieldname: 'analysis_html',
+                fieldtype: 'HTML',
+                options: html
+            }
+        ],
+        primary_action_label: __('Refresh'),
+        primary_action: function() {
+            dialog.hide();
+            show_employee_details_analysis_dropdown(frm);
+        },
+        secondary_action_label: __('Auto Allocate Leaves'),
+        secondary_action: function() {
+            dialog.hide();
+            frappe.confirm(__('This will automatically allocate leaves for this employee. Continue?'), function() {
+                frappe.call({
+                    method: 'phr.phr.api.leave_management.create_employee_leave_allocations',
+                    args: { employee_id: frm.doc.name },
+                    freeze: true,
+                    callback: function(r) {
+                        if (r.message && r.message.status === 'success') {
+                            frappe.show_alert({
+                                message: __('Leave allocations created successfully'),
+                                indicator: 'green'
+                            }, 3);
+                            show_employee_details_analysis_dropdown(frm);
+                        }
+                    }
+                });
+            });
+        }
+    });
+    
+    dialog.show();
+}
