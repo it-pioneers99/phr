@@ -1,0 +1,159 @@
+source,target
+Custom Tab,التبويب المخصص
+Nationality,الجنسية
+Current Salary,الراتب الحالي
+Contract Start Date,تاريخ بداية العقد
+Contract End Date,تاريخ نهاية العقد
+Contract Duration Months,مدة العقد بالأشهر
+Contract Duration Years,مدة العقد بالسنوات
+Contract Duration Days,مدة العقد بالأيام
+Remaining Contract Days,الأيام المتبقية من العقد
+Contract Status,حالة العقد
+Active,نشط
+Expired,منتهي
+Terminated,مُنهي
+Cancelled,ملغي
+Years of Service,سنوات الخدمة
+Is Muslim,مسلم
+Is Female,أنثى
+Employee Status,حالة الموظف
+In Service,في الخدمة
+Out of Service,خارج الخدمة
+On Leave,في إجازة
+Suspended,معلق
+Testing Period End Date,تاريخ نهاية فترة التجربة
+Testing Period Remaining Days,الأيام المتبقية من فترة التجربة
+Remaining Testing Days,الأيام المتبقية من التجربة
+Leave Analysis,تحليل الإجازات
+Total Leave Balance,إجمالي رصيد الإجازات
+Annual Leave Balance,رصيد الإجازة السنوية
+Is Additional Annual Leave,إجازة سنوية إضافية
+Annual Leave Used,الإجازة السنوية المستخدمة
+Annual Leave Remaining,الإجازة السنوية المتبقية
+Sick Leave Balance,رصيد الإجازة المرضية
+Sick Leave Used,الإجازة المرضية المستخدمة
+Sick Leave Remaining,الإجازة المرضية المتبقية
+Last Leave Calculation Date,تاريخ آخر حساب للإجازات
+Notifications,الإشعارات
+Last Notification Date,تاريخ آخر إشعار
+30-Day Notification Sent,تم إرسال إشعار 30 يوم
+90-Day Notification Sent,تم إرسال إشعار 90 يوم
+Additional Information,معلومات إضافية
+Sub Record,سجل فرعي
+Sick Leave Balance (Hidden),رصيد الإجازة المرضية (مخفي)
+Sick Leave Remaining (Hidden),الإجازة المرضية المتبقية (مخفي)
+Starting PHR custom fields setup...,بدء إعداد الحقول المخصصة لـ PHR...
+PHR custom fields setup completed successfully!,تم إعداد الحقول المخصصة لـ PHR بنجاح!
+Error setting up PHR custom fields: {0},خطأ في إعداد الحقول المخصصة لـ PHR: {0}
+All Employee custom fields already exist. Skipping creation.,جميع الحقول المخصصة للموظف موجودة بالفعل. تخطي الإنشاء.
+Employee custom fields: {0} new fields created, {1} fields already existed (total: {2}),الحقول المخصصة للموظف: تم إنشاء {0} حقول جديدة، {1} حقول موجودة بالفعل (الإجمالي: {2})
+All Leave Type custom fields already exist. Skipping creation.,جميع الحقول المخصصة لنوع الإجازة موجودة بالفعل. تخطي الإنشاء.
+Leave Type custom fields: {0} new fields created, {1} fields already existed (total: {2}),الحقول المخصصة لنوع الإجازة: تم إنشاء {0} حقول جديدة، {1} حقول موجودة بالفعل (الإجمالي: {2})
+PHR custom fields added successfully,تمت إضافة الحقول المخصصة لـ PHR بنجاح
+Setup PHR Custom Fields,إعداد الحقول المخصصة لـ PHR
+Show Loans,عرض القروض
+Please save the employee first.,يرجى حفظ الموظف أولاً
+Error,خطأ
+Show Loans function not found. Please check console for errors.,لم يتم العثور على وظيفة عرض القروض. يرجى التحقق من وحدة التحكم للأخطاء.
+PHR Calculations,حسابات PHR
+Loan Application,طلب قرض
+Custody Receipts,إيصالات العهدة
+Calculate Leave Balances,حساب أرصدة الإجازات
+Calculate Annual Leave Balance,حساب رصيد الإجازة السنوية
+Calculate Sick Leave Deduction,حساب خصم الإجازة المرضية
+Calculate Testing Period,حساب فترة التجربة
+Create Leave Allocations,إنشاء تخصيصات الإجازات
+Sync Leave Allocation,مزامنة تخصيص الإجازات
+Calculate End of Service,حساب نهاية الخدمة
+Refresh EOS Calculation,تحديث حساب نهاية الخدمة
+PHR Custom Fields,الحقول المخصصة لـ PHR
+PHR Fields,حقول PHR
+Custom Fields List,قائمة الحقول المخصصة
+Setup Fields,إعداد الحقول
+Setup Configuration,إعداد التكوين
+This will create/update custom fields on Employee and Leave Type doctypes.,سيؤدي هذا إلى إنشاء/تحديث الحقول المخصصة على أنواع المستندات الموظف ونوع الإجازة.
+Total Configured Fields:,إجمالي الحقول الم configured:
+Total Existing Fields:,إجمالي الحقول الموجودة:
+Setup PHR Custom Fields,إعداد الحقول المخصصة لـ PHR
+Close,إغلاق
+PHR Management - {0},إدارة PHR - {0}
+Leave Management,إدارة الإجازات
+Calculate Annual Leave Balance,حساب رصيد الإجازة السنوية
+Show Leaves Summary,عرض ملخص الإجازات
+Enhanced Leave Analysis,تحليل الإجازات المحسّن
+Testing Period,فترة التجربة
+Check Testing Period,التحقق من فترة التجربة
+Sick Leave Management,إدارة الإجازة المرضية
+Calculate Sick Leave Deduction,حساب خصم الإجازة المرضية
+Contract Management,إدارة العقود
+No penalty levels defined for this penalty type,لم يتم تعريف مستويات الجزاء لهذا النوع من الجزاء
+Employee {0} has been terminated due to penalty violation,تم إنهاء خدمة الموظف {0} بسبب مخالفة الجزاء
+Permission hours deducted from annual leave balance,تم خصم ساعات الإذن من رصيد الإجازة السنوية
+Insufficient leave balance. This will be deducted from salary in the next salary slip.,رصيد الإجازة غير كافٍ. سيتم خصم هذا من الراتب في كشف الراتب التالي.
+Basic salary not found. Sick leave deduction cannot be calculated.,لم يتم العثور على الراتب الأساسي. لا يمكن حساب خصم الإجازة المرضية.
+No pending checkins found to process.,لم يتم العثور على تسجيلات دخول معلقة للمعالجة.
+PHR System setup completed successfully!,تم إعداد نظام PHR بنجاح!
+Created penalty type: {0},تم إنشاء نوع الجزاء: {0}
+Created custom field: Nationality,تم إنشاء الحقل المخصص: الجنسية
+Created custom field: Current Salary,تم إنشاء الحقل المخصص: الراتب الحالي
+Sick Leave custom fields added successfully!,تمت إضافة الحقول المخصصة للإجازة المرضية بنجاح!
+Warning: Outstanding loan balance ({0}) exceeds total settlement ({1}),تحذير: رصيد القرض المستحق ({0}) يتجاوز إجمالي التسوية ({1})
+Final salary slip creation functionality to be implemented,وظيفة إنشاء كشف الراتب النهائي سيتم تنفيذها
+Created leave allocation for {0}: {1} days,تم إنشاء تخصيص الإجازة لـ {0}: {1} يوم
+Contract ending for {0} in {1} days,ينتهي العقد لـ {0} خلال {1} يوم
+Synced leave balances for {0} employees,تمت مزامنة أرصدة الإجازات لـ {0} موظف
+Created salary component: {0},تم إنشاء مكون الراتب: {0}
+Warning: This sick leave application is consecutive with the previous one. Please ensure medical documentation is provided.,تحذير: طلب الإجازة المرضية هذا متتالي مع السابق. يرجى التأكد من توفير الوثائق الطبية.
+Updated sick leave balances for {0} employees,تم تحديث أرصدة الإجازات المرضية لـ {0} موظف
+Employee custom fields created successfully!,تم إنشاء الحقول المخصصة للموظف بنجاح!
+Leave Type custom fields created successfully!,تم إنشاء الحقول المخصصة لنوع الإجازة بنجاح!
+Shift Type,نوع الوردية
+Start Time,وقت البداية
+End Time,وقت النهاية
+Series,السلسلة
+Amended From,تم التعديل من
+Attendance Details,تفاصيل الحضور
+Employee Checkin Reference,مرجع تسجيل دخول الموظف
+Occurrence Number,رقم الحدث
+Lateness (Minutes),التأخير (بالدقائق)
+Early Departure (Minutes),المغادرة المبكرة (بالدقائق)
+Penalty Period,فترة الجزاء
+Period Start Date,تاريخ بداية الفترة
+Period End Date,تاريخ نهاية الفترة
+Violation Description,وصف المخالفة
+Description,الوصف
+Penalty Amount (This Occurrence),مبلغ الجزاء (هذا الحدث)
+Calculated penalty for this specific occurrence,الجزاء المحسوب لهذا الحدث المحدد
+Draft,مسودة
+Submitted,مُرسل
+Approved,موافق عليه
+Rejected,مرفوض
+Check if employee is eligible for additional annual leave (2.5 days/month instead of 1.75 days/month),التحقق مما إذا كان الموظف مؤهلاً للحصول على إجازة سنوية إضافية (2.5 يوم/شهر بدلاً من 1.75 يوم/شهر)
+Saudi,سعودي
+Egyptian,مصري
+Indian,هندي
+Pakistani,باكستاني
+Filipino,فلبيني
+Bangladeshi,بنغلاديشي
+Other,أخرى
+Resignation,استقالة
+Contract Expiry,انتهاء العقد
+Termination by Employer,إنهاء من قبل صاحب العمل
+1st, 2nd, 3rd, 4th occurrence,الحدث الأول، الثاني، الثالث، الرابع
+Penalty period starts from day 21,تبدأ فترة الجزاء من اليوم 21
+Penalty period ends on day 20 of next month,تنتهي فترة الجزاء في اليوم 20 من الشهر التالي
+EOS Settlement,تسوية نهاية الخدمة
+Penalty Record,سجل الجزاء
+Penalty Type,نوع الجزاء
+Overtime Request,طلب العمل الإضافي
+Shift Permission Request,طلب إذن الوردية
+Loan Installment Postponement,تأجيل قسط القرض
+Salary Progression,تقدم الراتب
+Biometric Sync Log,سجل مزامنة البصمة
+Employee Penalty Tracking,تتبع جزاءات الموظف
+Penalty Level,مستوى الجزاء
+Penelty Type Level,مستوى نوع الجزاء
+Penalty,الجزاء
+Biometric Device,جهاز البصمة
+PHR - Pioneer HR Management,PHR - إدارة الموارد البشرية الرائدة
+

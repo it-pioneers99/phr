@@ -4,6 +4,14 @@ All Employee custom fields are defined here in a single place
 """
 
 EMPLOYEE_CUSTOM_FIELDS = [
+    # Custom Tab Section
+    {
+        "fieldname": "custom_tab",
+        "fieldtype": "Tab Break",
+        "label": "Custom Tab",
+        "insert_after": "status"
+    },
+    
     # Basic Information Section
     {
         "fieldname": "custom_nationalit",
@@ -11,15 +19,15 @@ EMPLOYEE_CUSTOM_FIELDS = [
         "label": "Nationality",
         "options": "Saudi\nEgyptian\nIndian\nPakistani\nFilipino\nBangladeshi\nOther",
         "default": "Saudi",
-        "insert_after": "employee_name",
-        "reqd": 0
+        "insert_after": "custom_tab",
+        "reqd": 1
     },
     {
         "fieldname": "salary",
         "fieldtype": "Currency",
         "label": "Current Salary",
         "insert_after": "custom_nationalit",
-        "reqd": 0
+        "reqd": 1
     },
     
     # Contract Information Section
@@ -27,15 +35,15 @@ EMPLOYEE_CUSTOM_FIELDS = [
         "fieldname": "contract_start_date",
         "fieldtype": "Date",
         "label": "Contract Start Date",
-        "insert_after": "date_of_joining",
-        "reqd": 0
+        "insert_after": "salary",
+        "reqd": 1
     },
     {
         "fieldname": "contract_end_date",
         "fieldtype": "Date",
         "label": "Contract End Date",
         "insert_after": "contract_start_date",
-        "reqd": 0
+        "reqd": 1
     },
     {
         "fieldname": "contract_duration_months",
@@ -76,7 +84,7 @@ EMPLOYEE_CUSTOM_FIELDS = [
         "options": "Active\nExpired\nTerminated\nCancelled",
         "default": "Active",
         "insert_after": "remaining_contract_days",
-        "reqd": 0
+        "reqd": 1
     },
     {
         "fieldname": "years_of_service",
@@ -93,14 +101,16 @@ EMPLOYEE_CUSTOM_FIELDS = [
         "fieldtype": "Check",
         "label": "Is Muslim",
         "insert_after": "years_of_service",
-        "default": 0
+        "default": 0,
+        "reqd": 1
     },
     {
         "fieldname": "is_female",
         "fieldtype": "Check",
         "label": "Is Female",
         "insert_after": "is_muslim",
-        "default": 0
+        "default": 0,
+        "reqd": 1
     },
     {
         "fieldname": "custom_employee_status",
@@ -109,7 +119,7 @@ EMPLOYEE_CUSTOM_FIELDS = [
         "options": "In Service\nOut of Service\nOn Leave\nSuspended",
         "default": "In Service",
         "insert_after": "is_female",
-        "reqd": 0
+        "reqd": 1
     },
     
     # Testing Period Section
@@ -119,7 +129,7 @@ EMPLOYEE_CUSTOM_FIELDS = [
         "label": "Testing Period End Date",
         "insert_after": "custom_employee_status",
         "depends_on": "eval:doc.status == 'Active'",
-        "reqd": 0
+        "reqd": 1
     },
     {
         "fieldname": "testing_period_remaining_days",
@@ -171,6 +181,7 @@ EMPLOYEE_CUSTOM_FIELDS = [
         "label": "Is Additional Annual Leave",
         "insert_after": "annual_leave_balance",
         "default": 0,
+        "reqd": 1,
         "description": "Check if employee is eligible for additional annual leave (2.5 days/month instead of 1.75 days/month)"
     },
     {
@@ -269,7 +280,7 @@ EMPLOYEE_CUSTOM_FIELDS = [
         "fieldtype": "Data",
         "label": "Sub Record",
         "insert_after": "additional_fields_section",
-        "reqd": 0
+        "reqd": 1
     },
     
     # Hidden Fields for Internal Use
